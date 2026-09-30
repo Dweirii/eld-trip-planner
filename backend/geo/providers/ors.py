@@ -9,6 +9,7 @@ from ..errors import RouteNotFound, UpstreamUnavailable
 from ..types import Route, RouteLeg
 
 PROFILE = "driving-hgv"
+NOT_RESPONDING = "The routing service is not responding. Please try again."
 
 # ORS error codes meaning "this trip can't be routed" rather than "the service failed".
 ROUTE_ERRORS = {
@@ -42,6 +43,7 @@ class OrsRouter:
             "coordinates": [[lng, lat] for lat, lng in points],
             "units": "mi",
             "instructions": False,
+            "radiuses": [-1] * len(points),  # snap each stop to the nearest road, however far
         }
         response = self._post(body)
         if response.status_code >= 400:
@@ -72,11 +74,11 @@ class OrsRouter:
         for attempt in range(2):
             try:
                 return self.client.post(url, json=body, headers=headers)
-            except httpx.TransportError as exc:
-                if attempt == 1:
-                    raise UpstreamUnavailable(
-                        "The routing service is not responding. Please try again."
-                    ) from exc
+            except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+                if attempt == 1:  # a connection that never opened is safe to retry once
+                    raise UpstreamUnavailable(NOT_RESPONDING) from exc
+            except httpx.TransportError as exc:  # e.g. a read timeout: don't wait twice
+                raise UpstreamUnavailable(NOT_RESPONDING) from exc
         raise AssertionError("unreachable")
 
     @staticmethod

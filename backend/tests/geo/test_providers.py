@@ -63,6 +63,32 @@ def test_photon_address_search_skips_the_city_layer_and_labels_streets():
     ]
 
 
+def test_photon_widens_a_town_search_that_finds_nothing():
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        if "layer" in request.url.params:
+            return httpx.Response(200, json={"type": "FeatureCollection", "features": []})
+        return httpx.Response(200, json=fixture("photon_search_address.json"))
+
+    geocoder = PhotonGeocoder(
+        base_url="https://photon.test", client=httpx.Client(transport=httpx.MockTransport(handler))
+    )
+
+    places = geocoder.search("Ross Avenue Dallas", limit=5)
+
+    assert [p.label for p in places] == [
+        "2100 Ross Ave Tower, Dallas, TX",
+        "2150 Ross Avenue, Dallas, TX",
+    ]
+    assert len(seen) == 2
+    first, second = (request.url.params for request in seen)
+    assert first["layer"] == "city" and "layer" not in second
+    for key in ("q", "limit", "lang", "bbox"):
+        assert first[key] == second[key]
+
+
 def test_photon_reverse_labels_the_town():
     geocoder = PhotonGeocoder(
         base_url="https://photon.test", client=client_returning(fixture("photon_reverse.json"))
@@ -102,6 +128,7 @@ def test_ors_parses_legs_geometry_and_waypoints():
     body = json.loads(request.content)
     assert body["coordinates"][0] == [-87.6298, 41.8781]  # lng, lat
     assert body["units"] == "mi"
+    assert body["radiuses"] == [-1, -1, -1]
 
 
 @pytest.mark.parametrize(("status", "code"), [(404, 2010), (404, 2009), (400, 2004)])
@@ -125,16 +152,29 @@ def test_ors_server_errors_raise_upstream_unavailable():
         router.route(POINTS)
 
 
-def test_ors_retries_a_network_failure_once():
+@pytest.mark.parametrize("exc", [httpx.ConnectError("down"), httpx.ConnectTimeout("no answer")])
+def test_ors_retries_a_network_failure_once(exc):
     seen: list[httpx.Request] = []
     router = OrsRouter(
         api_key="k",
         base_url="https://ors.test",
-        client=client_returning(seen=seen, exc=httpx.ConnectError("down")),
+        client=client_returning(seen=seen, exc=exc),
     )
     with pytest.raises(UpstreamUnavailable):
         router.route(POINTS)
     assert len(seen) == 2
+
+
+def test_ors_does_not_retry_a_read_timeout():
+    seen: list[httpx.Request] = []
+    router = OrsRouter(
+        api_key="k",
+        base_url="https://ors.test",
+        client=client_returning(seen=seen, exc=httpx.ReadTimeout("slow")),
+    )
+    with pytest.raises(UpstreamUnavailable):
+        router.route(POINTS)
+    assert len(seen) == 1
 
 
 def test_ors_without_an_api_key_fails_fast():

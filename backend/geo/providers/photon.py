@@ -37,8 +37,12 @@ class PhotonGeocoder:
 
     def search(self, query: str, limit: int = 5) -> list[Place]:
         params = [("q", query), ("limit", str(limit * 2)), ("lang", "en"), ("bbox", US_BBOX)]
-        if not any(ch.isdigit() for ch in query):
-            params.append(("layer", "city"))  # towns first; digits suggest a street address
+        if any(ch.isdigit() for ch in query):  # digits suggest a street address
+            return self._search(params, limit)
+        places = self._search([*params, ("layer", "city")], limit)  # towns first
+        return places or self._search(params, limit)  # no town matched: search everything
+
+    def _search(self, params: list[tuple[str, str]], limit: int) -> list[Place]:
         places: list[Place] = []
         for feature in self._get("/api/", params).get("features", []):
             place = to_place(feature)
