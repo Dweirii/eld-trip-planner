@@ -18,6 +18,8 @@ _TOLERANCE = 1e-6
 
 @dataclass(frozen=True, slots=True)
 class RuleCheck:
+    """One rule's verdict: the limit, what the plan shows, and whether it passed."""
+
     id: str
     title: str
     citation: str
@@ -37,6 +39,7 @@ class _Shift:
 def check(
     plan: TripPlan, logs: Sequence[DailyLog], rules: HOSRules = DEFAULT_RULES
 ) -> list[RuleCheck]:
+    """Check ``plan`` and its ``logs`` against every rule; one RuleCheck per rule."""
     shifts = _shifts(plan.events, rules)
     return [
         _driving_limit(shifts, rules),

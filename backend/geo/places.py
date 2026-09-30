@@ -20,6 +20,8 @@ _MAX_RING = 3  # past this, one exact scan beats more rings
 
 
 class NearestPlaceIndex:
+    """Finds the nearest bundled US town to a coordinate using a lat/lng grid."""
+
     def __init__(self, towns: Iterable[Town], cell_deg: float = 1.0) -> None:
         self._cell = cell_deg
         self._towns = list(towns)
@@ -31,6 +33,7 @@ class NearestPlaceIndex:
 
     @classmethod
     def from_csv(cls, path: Path = DATA_FILE) -> "NearestPlaceIndex":
+        """Build an index from the bundled GeoNames CSV (or a file with the same columns)."""
         with path.open(encoding="utf-8") as fh:
             return cls(
                 Town(
@@ -40,6 +43,7 @@ class NearestPlaceIndex:
             )
 
     def nearest(self, lat: float, lng: float) -> Town:
+        """The town closest to (lat, lng) by great-circle distance."""
         cy, cx = self._key(lat, lng)
         best: Town | None = None
         best_d = math.inf
@@ -55,6 +59,7 @@ class NearestPlaceIndex:
         return min(self._towns, key=lambda t: haversine_mi((lng, lat), (t.lng, t.lat)))
 
     def timezone_at(self, lat: float, lng: float) -> str:
+        """IANA time zone of the town nearest to (lat, lng)."""
         return self.nearest(lat, lng).timezone
 
     @staticmethod

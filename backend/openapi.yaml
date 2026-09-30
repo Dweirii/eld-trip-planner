@@ -9,6 +9,8 @@ paths:
   /api/geocode/:
     get:
       operationId: geocode_list
+      description: Up to limit US places matching q; towns first, street addresses
+        when q has digits.
       summary: Search US places (autocomplete)
       parameters:
       - in: query
@@ -53,6 +55,7 @@ paths:
   /api/geocode/reverse/:
     get:
       operationId: geocode_reverse_retrieve
+      description: The nearest US town to lat/lng, or 404 when there is none.
       summary: Nearest US town to a coordinate
       parameters:
       - in: query
@@ -417,6 +420,7 @@ components:
       - time_zone
     Place:
       type: object
+      description: 'A US place: a display label and its coordinates.'
       properties:
         label:
           type: string

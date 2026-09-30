@@ -13,12 +13,15 @@ from .serializers import GeocodeQuerySerializer, PlaceSerializer, ReverseQuerySe
 
 
 class GeocodeSearchView(APIView):
+    """Address autocomplete across the contiguous United States."""
+
     @extend_schema(
         summary="Search US places (autocomplete)",
         parameters=[GeocodeQuerySerializer],
         responses={200: PlaceSerializer(many=True), 400: ErrorSerializer, 503: ErrorSerializer},
     )
     def get(self, request: Request) -> Response:
+        """Up to limit US places matching q; towns first, street addresses when q has digits."""
         params = GeocodeQuerySerializer(data=request.query_params)
         params.is_valid(raise_exception=True)
         places = services.search_places(params.validated_data["q"], params.validated_data["limit"])
@@ -26,12 +29,15 @@ class GeocodeSearchView(APIView):
 
 
 class ReverseGeocodeView(APIView):
+    """The "use my location" lookup: the nearest US town to a coordinate."""
+
     @extend_schema(
         summary="Nearest US town to a coordinate",
         parameters=[ReverseQuerySerializer],
         responses={200: PlaceSerializer, 404: ErrorSerializer, 503: ErrorSerializer},
     )
     def get(self, request: Request) -> Response:
+        """The nearest US town to lat/lng, or 404 when there is none."""
         params = ReverseQuerySerializer(data=request.query_params)
         params.is_valid(raise_exception=True)
         place = services.reverse_place(params.validated_data["lat"], params.validated_data["lng"])

@@ -10,6 +10,7 @@ EARTH_RADIUS_MI = 3958.7613
 
 
 def haversine_mi(a: LngLat, b: LngLat) -> float:
+    """Great-circle distance in statute miles between two (lng, lat) points."""
     lng1, lat1, lng2, lat2 = map(math.radians, (a[0], a[1], b[0], b[1]))
     h = (
         math.sin((lat2 - lat1) / 2) ** 2
@@ -19,6 +20,7 @@ def haversine_mi(a: LngLat, b: LngLat) -> float:
 
 
 def cumulative_miles(coords: Sequence[LngLat]) -> list[float]:
+    """Running great-circle miles along a line: one entry per point, starting at 0.0."""
     out = [0.0]
     for a, b in zip(coords, coords[1:], strict=False):
         out.append(out[-1] + haversine_mi(a, b))
@@ -55,6 +57,7 @@ class RouteLocator:
         self.total_miles = start
 
     def at_mile(self, mile: float) -> tuple[float, float]:
+        """(lat, lng) at ``mile`` road miles from the start, clamped to the route's ends."""
         for index, (start, miles, coords, cum) in enumerate(self._legs):
             if mile <= start + miles or index == len(self._legs) - 1:
                 fraction = 0.0 if miles == 0 else min(max((mile - start) / miles, 0.0), 1.0)

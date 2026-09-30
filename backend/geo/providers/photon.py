@@ -24,6 +24,8 @@ US_STATES = {
 
 
 class PhotonGeocoder:
+    """Geocoder backed by Photon (komoot), limited to the contiguous United States."""
+
     def __init__(
         self,
         base_url: str | None = None,
@@ -37,6 +39,7 @@ class PhotonGeocoder:
         )
 
     def search(self, query: str, limit: int = 5) -> list[Place]:
+        """Up to ``limit`` US places for ``query``; towns first unless it looks like an address."""
         params = [("q", query), ("limit", str(limit * 2)), ("lang", "en"), ("bbox", US_BBOX)]
         if any(ch.isdigit() for ch in query):  # digits suggest a street address
             return self._search(params, limit)
@@ -52,6 +55,7 @@ class PhotonGeocoder:
         return places[:limit]
 
     def reverse(self, lat: float, lng: float) -> Place | None:
+        """The US town at (lat, lng), labelled "Town, ST", or None."""
         params = [("lat", f"{lat:.6f}"), ("lon", f"{lng:.6f}"), ("lang", "en")]
         for feature in self._get("/reverse", params).get("features", []):
             props = feature.get("properties", {})

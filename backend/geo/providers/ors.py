@@ -20,6 +20,8 @@ ROUTE_ERRORS = {
 
 
 class OrsRouter:
+    """Router backed by the OpenRouteService directions API (heavy-goods-vehicle profile)."""
+
     def __init__(
         self,
         api_key: str | None = None,
@@ -35,6 +37,7 @@ class OrsRouter:
         )
 
     def route(self, points: Sequence[tuple[float, float]]) -> Route:
+        """Route through ``points`` given as (lat, lng); one leg per consecutive pair."""
         if not self.api_key:
             raise UpstreamUnavailable(
                 "Routing is not configured on the server (missing ORS_API_KEY)."

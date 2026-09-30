@@ -41,6 +41,8 @@ PlaceNamer = Callable[[float], str]
 
 @dataclass(frozen=True, slots=True)
 class LogSegment:
+    """A stretch of one duty status on a day's grid (minutes after that day's midnight)."""
+
     status: DutyStatus
     start_minute: int  # minutes after that day's midnight
     end_minute: int
@@ -48,6 +50,8 @@ class LogSegment:
 
 @dataclass(frozen=True, slots=True)
 class Remark:
+    """A remarks entry: where and why the duty status changed."""
+
     minute: int
     place: str
     note: str
@@ -55,6 +59,8 @@ class Remark:
 
 @dataclass(frozen=True, slots=True)
 class Bracket:
+    """A stationary on-duty or rest period, bracketed on the grid with its place."""
+
     start_minute: int
     end_minute: int
     place: str
@@ -62,6 +68,8 @@ class Bracket:
 
 @dataclass(frozen=True, slots=True)
 class Recap:
+    """The sheet's 70-hour/8-day recap in hours (columns A, B and C of the template)."""
+
     on_duty_today: float
     a_last_7_days: float
     b_available_tomorrow: float
@@ -70,6 +78,8 @@ class Recap:
 
 @dataclass(frozen=True, slots=True)
 class DailyLog:
+    """One Driver's Daily Log sheet for a single calendar day."""
+
     day_index: int
     segments: tuple[LogSegment, ...]
     totals: dict[DutyStatus, float]  # hours per log line; always sums to 24

@@ -4,6 +4,8 @@ from django.db import models
 
 
 class GeocodeCache(models.Model):
+    """Geocoder results by normalized query; services re-fetch rows older than 30 days."""
+
     query = models.CharField(
         max_length=255, unique=True
     )  # normalized "search:…" or "reverse:…" key
@@ -15,6 +17,8 @@ class GeocodeCache(models.Model):
 
 
 class RouteCache(models.Model):
+    """Truck routes by profile and rounded coordinates; kept indefinitely."""
+
     key = models.CharField(max_length=255, unique=True)  # profile + rounded coordinates
     payload = models.JSONField()
     created_at = models.DateTimeField(auto_now_add=True)

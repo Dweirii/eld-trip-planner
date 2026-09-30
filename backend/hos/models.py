@@ -65,14 +65,17 @@ class DutyEvent:
 
     @property
     def status(self) -> DutyStatus:
+        """The log line this event is drawn on."""
         return KIND_STATUS[self.kind]
 
     @property
     def duration_min(self) -> int:
+        """Length in minutes."""
         return self.end_min - self.start_min
 
     @property
     def miles(self) -> float:
+        """Road miles covered (zero unless driving)."""
         return self.end_mi - self.start_mi
 
 
@@ -87,10 +90,13 @@ class TripPlan:
 
     @property
     def end_min(self) -> int:
+        """The minute the last event ends."""
         return self.events[-1].end_min
 
     def first(self, kind: EventKind) -> DutyEvent | None:
+        """The first event of ``kind``, or None."""
         return next((e for e in self.events if e.kind is kind), None)
 
     def minutes_in(self, *statuses: DutyStatus) -> int:
+        """Total minutes spent in any of ``statuses``."""
         return sum(e.duration_min for e in self.events if e.status in statuses)

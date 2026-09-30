@@ -24,14 +24,17 @@ def _provider(dotted_path: str):
 
 
 def geocoder() -> Geocoder:
+    """The configured geocoder adapter (settings.GEO_GEOCODER)."""
     return _provider(settings.GEO_GEOCODER)
 
 
 def router() -> Router:
+    """The configured router adapter (settings.GEO_ROUTER)."""
     return _provider(settings.GEO_ROUTER)
 
 
 def search_places(query: str, limit: int = 5) -> list[Place]:
+    """Up to ``limit`` US places for ``query``, served from the cache while fresh."""
     key = f"search:{limit}:{' '.join(query.lower().split())}"
     cached = _fresh(key)
     if cached is not None:
@@ -44,6 +47,7 @@ def search_places(query: str, limit: int = 5) -> list[Place]:
 
 
 def reverse_place(lat: float, lng: float) -> Place | None:
+    """The US town at (lat, lng), or None; cached per 0.001-degree cell."""
     key = f"reverse:{lat:.3f},{lng:.3f}"
     cached = _fresh(key)
     if cached is not None:
@@ -68,6 +72,7 @@ def resolve_place(
 
 
 def get_route(points: Sequence[tuple[float, float]]) -> Route:
+    """Truck route through (lat, lng) points, cached by profile and rounded coordinates."""
     key = f"{ROUTE_PROFILE}:" + ";".join(f"{lat:.5f},{lng:.5f}" for lat, lng in points)
     cached = RouteCache.objects.filter(key=key).first()
     if cached is not None:
