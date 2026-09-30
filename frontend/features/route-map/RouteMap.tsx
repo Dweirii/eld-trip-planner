@@ -176,7 +176,8 @@ export default function RouteMap({ trip, preview, selectedStopId, onSelectStop }
 
   return (
     <div className="absolute inset-0">
-      <div ref={containerRef} className="absolute inset-0" role="region" aria-label="Route map" />
+      {/* h-full/w-full, not absolute: maplibre-gl.css's unlayered `position: relative` beats Tailwind's layered `absolute`. */}
+      <div ref={containerRef} className="h-full w-full" role="region" aria-label="Route map" />
       <MapLegend />
     </div>
   );
