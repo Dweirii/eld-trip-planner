@@ -9,6 +9,7 @@ import { STOP_STYLE } from "@/lib/stops";
 import { boundsOf, type LngLat } from "./bounds";
 import { createMarkerElement, popupContent, stopPopupLines, stopTitle } from "./markers";
 
+const WORKER_URL = "/maplibre/maplibre-gl-worker.mjs";
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 const EMPTY: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
@@ -74,6 +75,8 @@ export default function RouteMap({ trip, preview, selectedStopId, onSelectStop }
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    // MapLibre 6 module worker is not bundled by Turbopack; serve the copy from public/.
+    maplibregl.setWorkerUrl(WORKER_URL);
     const map = new maplibregl.Map({
       container,
       style: STYLE_URL,
