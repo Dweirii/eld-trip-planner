@@ -87,35 +87,41 @@ class _Planner:
             return
         speed = leg.miles / leg.duration_min  # miles per minute
         while remaining > _MILES_EPS:
-            self._take_required_stops(speed)
+            self._take_required_stops(speed, remaining)
             to_finish = ceil_to(remaining / speed, self.rules.quantum_min)
-            minutes = min(to_finish, *self._driving_bounds(speed).values())
+            minutes = min(to_finish, *self._driving_bounds(speed, remaining).values())
             miles = remaining if minutes == to_finish else minutes * speed
             self._drive(minutes, miles)
             remaining -= miles
 
-    def _driving_bounds(self, speed: float) -> dict[str, int]:
-        """Minutes of driving each rule still allows (≤ 0 means a stop is due)."""
+    def _driving_bounds(self, speed: float, remaining: float) -> dict[str, int]:
+        """Minutes of driving each rule still allows (≤ 0 means a stop is due).
+
+        The fuel bound is present only when this leg would exceed the fuel range.
+        """
         r = self.rules
         if self.shift_start is None:
             window_left = r.driving_window_min
         else:
             window_left = self.shift_start + r.driving_window_min - self.t
-        return {
+        bounds = {
             "shift": r.max_driving_min - self.shift_drive,
             "window": window_left,
             "break": r.break_after_driving_min - self.drive_since_break,
             "cycle": floor_to(r.cycle_limit_min - self.cycle, r.quantum_min),
-            "fuel": floor_to((r.fuel_interval_mi - self.miles_since_fuel) / speed, r.quantum_min),
         }
+        fuel_left = r.fuel_interval_mi - self.miles_since_fuel
+        if remaining > fuel_left + _MILES_EPS:
+            bounds["fuel"] = floor_to(fuel_left / speed, r.quantum_min)
+        return bounds
 
-    def _take_required_stops(self, speed: float) -> None:
+    def _take_required_stops(self, speed: float, remaining: float) -> None:
         r = self.rules
         while True:
-            bounds = self._driving_bounds(speed)
+            bounds = self._driving_bounds(speed, remaining)
             if bounds["cycle"] <= 0:
                 self._off(EventKind.RESTART, r.restart_min)
-            elif bounds["fuel"] <= 0:
+            elif "fuel" in bounds and bounds["fuel"] <= 0:
                 self._work(EventKind.FUEL, r.fuel_min)
                 self.miles_since_fuel = 0.0
             elif bounds["shift"] <= 0 or bounds["window"] <= 0:

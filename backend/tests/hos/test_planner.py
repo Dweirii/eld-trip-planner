@@ -158,3 +158,34 @@ def test_timeline_is_contiguous_on_the_grid_and_miles_add_up():
 def test_invalid_inputs_are_rejected(legs, cycle, start):
     with pytest.raises(ValueError):
         plan_trip(legs, cycle, start)
+
+
+def test_no_fuel_stop_when_the_leg_ends_within_range():
+    plan = plan_trip([leg(0, 60), leg(995, 60)], 0, 0)
+
+    assert not any(e.kind is K.FUEL for e in plan.events)
+    assert sum(e.miles for e in plan.events if e.kind is K.DRIVE) == pytest.approx(995)
+
+
+def test_fuel_due_at_the_eleventh_hour_fuels_then_rests():
+    plan = plan_trip([leg(0, 60), leg(2400, 60)], 0, 0)
+
+    fuels = [i for i, e in enumerate(plan.events) if e.kind is K.FUEL]
+    second = plan.events[fuels[1]]
+    following = plan.events[fuels[1] + 1]
+    assert second.start_min == 3330
+    assert following.kind is K.REST and following.start_min == 3360
+
+
+def test_non_quarter_cycle_hours_are_used_conservatively():
+    plan = plan_trip([leg(0, 60), leg(80, 60)], cycle_used_hours=68.7, start_min=0)
+
+    kinds = [e.kind for e in plan.events]
+    assert kinds == [K.PICKUP, K.DRIVE, K.RESTART, K.DRIVE, K.DROPOFF, K.OFF_AFTER]
+    assert plan.first(K.DRIVE).duration_min == 15
+
+
+def test_tiny_legs_take_one_grid_quantum():
+    plan = plan_trip([leg(1, 60), leg(1, 60)], 0, 0)
+
+    assert [e.duration_min for e in plan.events if e.kind is K.DRIVE] == [15, 15]
