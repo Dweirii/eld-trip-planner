@@ -61,6 +61,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "config.urls"
+APPEND_SLASH = False  # API paths end with "/"; never redirect (a redirect drops POST bodies)
 WSGI_APPLICATION = "config.wsgi.application"
 
 TEMPLATES = [
