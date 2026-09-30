@@ -681,9 +681,10 @@ components:
         dropoff_location:
           $ref: '#/components/schemas/LocationInputRequest'
         current_cycle_used_hours:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,2}(?:\.\d{0,2})?$
+          type: number
+          format: double
+          maximum: 70
+          minimum: 0
         start_time:
           type: string
           minLength: 1

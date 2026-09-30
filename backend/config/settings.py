@@ -105,6 +105,7 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "EXCEPTION_HANDLER": "config.errors.api_exception_handler",
+    "COERCE_DECIMAL_TO_STRING": False,  # decimals are JSON numbers in the API contract
 }
 
 SPECTACULAR_SETTINGS = {
