@@ -48,3 +48,15 @@ def test_very_long_trip_routes_each_leg_separately(client):
     assert len(trip["route"]["legs"]) == 2
     assert [leg["from"] for leg in trip["route"]["legs"]] == ["New York, NY", "Los Angeles, CA"]
     assert_compliant(trip)
+
+
+@pytest.mark.parametrize("cycle", [0, 60])
+def test_cross_country_trip_is_compliant_at_any_cycle(client, cycle):
+    trip = post(client, "New York, NY", "Newark, NJ", "Los Angeles, CA", cycle=cycle)
+
+    summary = trip["summary"]
+    assert summary["days"] >= 5
+    assert summary["stops"]["fuel"] >= 2
+    if cycle == 60:
+        assert summary["stops"]["restart"] == 1
+    assert_compliant(trip)

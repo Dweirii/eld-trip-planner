@@ -12,7 +12,7 @@ from hos.planner import plan_trip
 miles = st.one_of(st.just(0.0), st.floats(min_value=1, max_value=1500, allow_nan=False))
 long_miles = st.floats(min_value=1, max_value=2500, allow_nan=False)
 mph = st.floats(min_value=35, max_value=65, allow_nan=False)
-cycle = st.integers(min_value=0, max_value=280).map(lambda quarters: quarters / 4)  # 0–70 h
+cycle = st.integers(min_value=0, max_value=7000).map(lambda c: c / 100)  # 0–70 h, like the API
 start = st.integers(min_value=0, max_value=95).map(lambda q: q * 15)
 
 
