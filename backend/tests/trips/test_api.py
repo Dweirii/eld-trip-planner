@@ -47,6 +47,7 @@ def test_plans_a_multi_day_trip(client):
     }
     assert trip["summary"]["starts_at"] == "2026-10-01T06:00:00-05:00"
     assert trip["summary"]["days"] == len(trip["daily_logs"]) == 2
+    assert set(trip["summary"]["stops"]) == {"fuel", "break", "rest", "restart"}
     assert all(check["passed"] for check in trip["compliance"])
     assert all(sum(log["totals"].values()) == 24 for log in trip["daily_logs"])
     kinds = [stop["kind"] for stop in trip["stops"]]

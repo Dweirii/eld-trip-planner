@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from trips.serializers import TripRequestSerializer
+from trips.serializers import PlanTripSerializer
 
 VALID = {
     "current_location": {"label": "Chicago, IL", "lat": 41.8781, "lng": -87.6298},
@@ -14,7 +14,7 @@ VALID = {
 
 
 def validate(**overrides):
-    serializer = TripRequestSerializer(data={**VALID, **overrides})
+    serializer = PlanTripSerializer(data={**VALID, **overrides})
     return serializer.is_valid(), serializer
 
 

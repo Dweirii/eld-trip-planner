@@ -11,14 +11,14 @@ from config.errors import ErrorSerializer
 
 from . import presenters, services
 from .models import Trip
-from .serializers import TripRequestSerializer, TripResponseSerializer
+from .serializers import PlanTripSerializer, TripResponseSerializer
 
 
 class TripCreateView(APIView):
     @extend_schema(
         summary="Plan a trip",
         description="Geocodes the stops, routes a truck, applies the HOS rules, and saves the plan.",
-        request=TripRequestSerializer,
+        request=PlanTripSerializer,
         responses={
             201: TripResponseSerializer,
             400: ErrorSerializer,
@@ -27,7 +27,7 @@ class TripCreateView(APIView):
         },
     )
     def post(self, request: Request) -> Response:
-        serializer = TripRequestSerializer(data=request.data)
+        serializer = PlanTripSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         trip = services.plan_and_save(serializer.validated_data)
         return Response(

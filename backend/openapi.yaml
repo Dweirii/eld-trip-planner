@@ -106,7 +106,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TripRequestRequest'
+              $ref: '#/components/schemas/PlanTripRequest'
         required: true
       security:
       - {}
@@ -430,6 +430,31 @@ components:
       - label
       - lat
       - lng
+    PlanTripRequest:
+      type: object
+      properties:
+        current_location:
+          $ref: '#/components/schemas/LocationInputRequest'
+        pickup_location:
+          $ref: '#/components/schemas/LocationInputRequest'
+        dropoff_location:
+          $ref: '#/components/schemas/LocationInputRequest'
+        current_cycle_used_hours:
+          type: number
+          format: double
+          maximum: 70
+          minimum: 0
+        start_time:
+          type: string
+          minLength: 1
+          description: Local home-terminal time, YYYY-MM-DDTHH:MM. Defaults to now.
+        log_details:
+          $ref: '#/components/schemas/LogDetailsRequest'
+      required:
+      - current_cycle_used_hours
+      - current_location
+      - dropoff_location
+      - pickup_location
     Recap:
       type: object
       properties:
@@ -598,6 +623,22 @@ components:
       - place
       - starts_at
       - status
+    StopCounts:
+      type: object
+      properties:
+        fuel:
+          type: integer
+        break:
+          type: integer
+        rest:
+          type: integer
+        restart:
+          type: integer
+      required:
+      - break
+      - fuel
+      - rest
+      - restart
     Summary:
       type: object
       properties:
@@ -617,9 +658,7 @@ components:
         days:
           type: integer
         stops:
-          type: object
-          additionalProperties:
-            type: integer
+          $ref: '#/components/schemas/StopCounts'
       required:
       - arrives_at
       - days
@@ -671,31 +710,6 @@ components:
       - log_details
       - pickup_location
       - start_time
-    TripRequestRequest:
-      type: object
-      properties:
-        current_location:
-          $ref: '#/components/schemas/LocationInputRequest'
-        pickup_location:
-          $ref: '#/components/schemas/LocationInputRequest'
-        dropoff_location:
-          $ref: '#/components/schemas/LocationInputRequest'
-        current_cycle_used_hours:
-          type: number
-          format: double
-          maximum: 70
-          minimum: 0
-        start_time:
-          type: string
-          minLength: 1
-          description: Local home-terminal time, YYYY-MM-DDTHH:MM. Defaults to now.
-        log_details:
-          $ref: '#/components/schemas/LogDetailsRequest'
-      required:
-      - current_cycle_used_hours
-      - current_location
-      - dropoff_location
-      - pickup_location
     TripResponse:
       type: object
       properties:

@@ -57,7 +57,7 @@ class LogDetailsSerializer(serializers.Serializer):
     shipper_commodity = serializers.CharField(max_length=160, required=False, allow_blank=True)
 
 
-class TripRequestSerializer(serializers.Serializer):
+class PlanTripSerializer(serializers.Serializer):
     current_location = LocationInputSerializer()
     pickup_location = LocationInputSerializer()
     dropoff_location = LocationInputSerializer()
@@ -95,6 +95,19 @@ class HomeTimeZoneSerializer(serializers.Serializer):
     utc_offset = serializers.CharField()
 
 
+# "break" is a Python keyword, so this serializer is built with type().
+StopCountsSerializer = type(
+    "StopCountsSerializer",
+    (serializers.Serializer,),
+    {
+        "fuel": serializers.IntegerField(),
+        "break": serializers.IntegerField(),
+        "rest": serializers.IntegerField(),
+        "restart": serializers.IntegerField(),
+    },
+)
+
+
 class SummarySerializer(serializers.Serializer):
     total_miles = serializers.FloatField()
     driving_hours = serializers.FloatField()
@@ -102,7 +115,7 @@ class SummarySerializer(serializers.Serializer):
     starts_at = serializers.CharField()
     arrives_at = serializers.CharField()
     days = serializers.IntegerField()
-    stops = serializers.DictField(child=serializers.IntegerField())
+    stops = StopCountsSerializer()
 
 
 class GeometrySerializer(serializers.Serializer):
