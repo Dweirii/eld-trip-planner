@@ -151,13 +151,29 @@ function DutyGrid({
       >
         <title id={titleId}>{`Duty status grid for ${log.date}`}</title>
         <g fontSize={8.5} fill="currentColor">
-          {HOUR_LABELS.map((label, hour) => (
-            <text key={hour} x={minuteToX(hour * 60)} y={14} textAnchor="middle">
-              {label}
-            </text>
-          ))}
-          <text x={GRID.totalsX} y={14}>
+          {HOUR_LABELS.map((label, hour) => {
+            const x = minuteToX(hour * 60);
+            if (hour === 0 || hour === 24) {
+              return (
+                <text key={hour} x={x} y={8} textAnchor="middle">
+                  Mid-
+                  <tspan x={x} dy={8}>
+                    night
+                  </tspan>
+                </text>
+              );
+            }
+            return (
+              <text key={hour} x={x} y={14} textAnchor="middle">
+                {label}
+              </text>
+            );
+          })}
+          <text x={GRID.totalsX} y={8}>
             Total
+            <tspan x={GRID.totalsX} dy={8}>
+              hours
+            </tspan>
           </text>
           {ROWS.map((status) => {
             const [first, second] = ROW_LABELS[status];
@@ -216,28 +232,12 @@ function DutyGrid({
           const selected = stopId !== null && stopId === selectedStopId;
           const interactive = stopId !== null && onSelectStop !== undefined;
           return (
-            <path
+            <BracketMark
               key={`${bracket.start_minute}-${bracket.end_minute}`}
               d={bracketPath(bracket.start_minute, bracket.end_minute)}
-              fill="none"
-              stroke={selected ? TEAL : INK_BLUE}
-              strokeWidth={selected ? 3 : 1.7}
-              role={interactive ? "button" : undefined}
-              tabIndex={interactive ? 0 : undefined}
-              aria-label={interactive ? `Stop at ${bracket.place}` : undefined}
-              aria-pressed={interactive ? selected : undefined}
-              className={clsx(interactive && "cursor-pointer")}
-              onClick={interactive ? () => onSelectStop(stopId) : undefined}
-              onKeyDown={
-                interactive
-                  ? (event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        onSelectStop(stopId);
-                      }
-                    }
-                  : undefined
-              }
+              selected={selected}
+              place={bracket.place}
+              onSelect={interactive ? () => onSelectStop(stopId) : undefined}
             />
           );
         })}
@@ -303,5 +303,46 @@ function RecapCell({ value, label }: { value: number; label: string }) {
       </div>
       <div className="mt-1 leading-tight">{label}</div>
     </div>
+  );
+}
+
+function BracketMark({
+  d,
+  selected,
+  place,
+  onSelect,
+}: {
+  d: string;
+  selected: boolean;
+  place: string;
+  onSelect?: () => void;
+}) {
+  const stroke = selected ? TEAL : INK_BLUE;
+  const strokeWidth = selected ? 3 : 1.7;
+  if (!onSelect) return <path d={d} fill="none" stroke={stroke} strokeWidth={strokeWidth} />;
+  return (
+    <g
+      role="button"
+      tabIndex={0}
+      aria-label={`Stop at ${place}`}
+      aria-pressed={selected}
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
+      className="group cursor-pointer outline-none"
+    >
+      <path
+        d={d}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={strokeWidth}
+        className="group-hover:stroke-[#008080] group-focus-visible:stroke-[#008080]"
+      />
+      <path d={d} fill="none" stroke="transparent" strokeWidth={14} pointerEvents="stroke" />
+    </g>
   );
 }

@@ -53,4 +53,14 @@ describe("LogSheet", () => {
     await userEvent.click(screen.getByRole("button", { name: "Stop at St. Louis, MO" }));
     expect(onSelectStop).toHaveBeenCalledWith("s3");
   });
+
+  it("makes brackets keyboard focusable and selectable with Enter", async () => {
+    const onSelectStop = vi.fn();
+    render(<LogSheet log={day1} bracketStopIds={["s3", "s5"]} onSelectStop={onSelectStop} />);
+    const bracket = screen.getByRole("button", { name: "Stop at St. Louis, MO" });
+    expect(bracket).toHaveAttribute("tabindex", "0");
+    bracket.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(onSelectStop).toHaveBeenCalledWith("s3");
+  });
 });

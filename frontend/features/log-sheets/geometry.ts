@@ -2,7 +2,7 @@
 import type { Bracket, DutyStatus, Segment } from "@/lib/api/types";
 
 export const MINUTES_PER_DAY = 1440;
-export const VIEWBOX = { width: 780, height: 250 } as const;
+export const VIEWBOX = { width: 780, height: 215 } as const;
 export const GRID = { left: 96, top: 22, width: 624, rowHeight: 26, totalsX: 736 } as const;
 export const ROWS: readonly DutyStatus[] = ["off_duty", "sleeper_berth", "driving", "on_duty"];
 export const GRID_BOTTOM = GRID.top + GRID.rowHeight * ROWS.length;
