@@ -68,9 +68,15 @@ export function TripForm({ values, errors, pending, onChange, onSubmit, onExampl
       <button
         type="submit"
         disabled={pending}
-        className="rounded-full bg-coral py-2.5 text-[13px] font-extrabold text-white shadow-sm transition hover:brightness-105 disabled:opacity-70"
+        className="rounded-full bg-coral-ink py-2.5 text-[13px] font-extrabold text-white shadow-sm transition hover:brightness-95 disabled:opacity-70"
       >
-        {pending ? "Planning…" : "Plan trip →"}
+        {pending ? (
+          "Planning…"
+        ) : (
+          <>
+            Plan trip <span aria-hidden="true">→</span>
+          </>
+        )}
       </button>
       <ExampleChips onPick={onExample} disabled={pending} />
     </form>

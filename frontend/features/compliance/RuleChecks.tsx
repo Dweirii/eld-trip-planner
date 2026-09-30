@@ -19,7 +19,7 @@ export function RuleChecks({ checks }: { checks: readonly RuleCheck[] }) {
           <span
             className={clsx(
               "flex shrink-0 items-center gap-1.5 font-bold tabular-nums",
-              check.passed ? "text-teal" : "text-coral",
+              check.passed ? "text-teal" : "text-coral-ink",
             )}
           >
             <span>{`${amount(check.observed, check.unit)} / ${amount(check.limit, check.unit)}`}</span>

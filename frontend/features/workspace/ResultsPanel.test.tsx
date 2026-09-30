@@ -30,7 +30,7 @@ describe("ResultsPanel", () => {
 
   it("edits or starts over", async () => {
     const props = setup();
-    await userEvent.click(screen.getByRole("button", { name: /Edit trip/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Edit trip" }));
     await userEvent.click(screen.getByRole("button", { name: /New trip/ }));
     expect(props.onEdit).toHaveBeenCalledOnce();
     expect(props.onNewTrip).toHaveBeenCalledOnce();

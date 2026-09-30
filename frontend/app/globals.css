@@ -3,6 +3,8 @@
 @theme {
   --color-brand: #043b4b;
   --color-coral: #f84960;
+  /* Coral dark enough for text and for backgrounds behind white text (4.79:1 with white). */
+  --color-coral-ink: #d6304b;
   --color-teal: #008080;
   --color-mint: #bcddde;
   --color-surface: #f5f8f8;
@@ -41,7 +43,7 @@ body {
 
 @layer base {
   :focus-visible {
-    outline: 3px solid color-mix(in srgb, var(--color-teal) 55%, transparent);
+    outline: 3px solid var(--color-teal);
     outline-offset: 2px;
   }
 

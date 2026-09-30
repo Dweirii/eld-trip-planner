@@ -137,7 +137,7 @@ export function LocationInput({
       <div
         className={clsx(
           "flex items-center gap-2 rounded-xl border-[1.5px] bg-white px-3 py-2 text-[13px] transition focus-within:border-teal",
-          message ? "border-coral" : "border-line",
+          message ? "border-coral-ink" : "border-line",
         )}
       >
         <span
@@ -165,7 +165,7 @@ export function LocationInput({
           onFocus={() => {
             if (options.length > 0) setOpen(true);
           }}
-          className="min-w-0 flex-1 bg-transparent font-semibold outline-none placeholder:font-normal placeholder:text-[#8aa0a6]"
+          className="min-w-0 flex-1 bg-transparent font-semibold outline-none placeholder:font-normal placeholder:text-muted"
         />
         {status === "loading" && (
           <span className="text-[11px] text-muted" aria-hidden="true">
@@ -181,7 +181,7 @@ export function LocationInput({
             title="Use my location"
             className="text-base leading-none text-muted hover:text-teal disabled:opacity-40"
           >
-            ◎
+            <span aria-hidden="true">◎</span>
           </button>
         )}
       </div>
@@ -214,7 +214,7 @@ export function LocationInput({
         <p className="mt-1 text-[11px] text-muted">No US places match. Try &quot;City, ST&quot;.</p>
       )}
       {message && (
-        <p id={messageId} role="alert" className="mt-1 text-[11px] font-semibold text-coral">
+        <p id={messageId} role="alert" className="mt-1 text-[11px] font-semibold text-coral-ink">
           {message}
         </p>
       )}

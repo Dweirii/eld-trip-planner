@@ -28,7 +28,7 @@ export function DetailsSection({ values, onChange, error }: DetailsSectionProps)
             className="rounded-lg border-[1.5px] border-line px-2 py-1.5 focus:border-teal focus:outline-none"
           />
           {error && (
-            <span role="alert" className="text-[11px] font-semibold text-coral">
+            <span role="alert" className="text-[11px] font-semibold text-coral-ink">
               {error}
             </span>
           )}
@@ -42,7 +42,7 @@ export function DetailsSection({ values, onChange, error }: DetailsSectionProps)
               onChange={(event) =>
                 onChange({ ...values, details: { ...values.details, [field.key]: event.target.value } })
               }
-              className="min-w-0 rounded-lg border-[1.5px] border-line px-2 py-1.5 focus:border-teal focus:outline-none"
+              className="min-w-0 rounded-lg border-[1.5px] border-line px-2 py-1.5 placeholder:text-muted focus:border-teal focus:outline-none"
             />
           </label>
         ))}

@@ -36,7 +36,7 @@ describe("TripForm", () => {
 
   it("submits, and disables the button while planning", async () => {
     const props = setup();
-    await userEvent.click(screen.getByRole("button", { name: /plan trip/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Plan trip" }));
     expect(props.onSubmit).toHaveBeenCalledOnce();
   });
 

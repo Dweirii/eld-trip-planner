@@ -54,7 +54,7 @@ export function CycleGauge({ value, onChange, error }: CycleGaugeProps) {
         </span>
       </p>
       {error && (
-        <p role="alert" className="mt-1 text-[11px] font-semibold text-coral">
+        <p role="alert" className="mt-1 text-[11px] font-semibold text-coral-ink">
           {error}
         </p>
       )}

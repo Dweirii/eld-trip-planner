@@ -65,9 +65,9 @@ export function LogSheets({ trip, selectedStopId, onSelectStop }: LogSheetsProps
         <button
           type="button"
           onClick={() => window.print()}
-          className="ml-auto rounded-full bg-coral px-4 py-1.5 text-xs font-bold text-white"
+          className="ml-auto rounded-full bg-coral-ink px-4 py-1.5 text-xs font-bold text-white"
         >
-          ⎙ Print / PDF all
+          <span aria-hidden="true">⎙</span> Print / PDF all
         </button>
       </div>
 

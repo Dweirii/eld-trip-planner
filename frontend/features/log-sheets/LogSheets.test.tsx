@@ -36,7 +36,7 @@ describe("LogSheets", () => {
   it("prints every sheet", async () => {
     const print = vi.spyOn(window, "print").mockImplementation(() => {});
     render(<LogSheets trip={sampleTrip} selectedStopId={null} onSelectStop={vi.fn()} />);
-    await userEvent.click(screen.getByRole("button", { name: /print/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Print / PDF all" }));
     expect(print).toHaveBeenCalledOnce();
   });
 });

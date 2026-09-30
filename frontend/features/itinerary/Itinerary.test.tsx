@@ -17,8 +17,8 @@ describe("Itinerary", () => {
     const rest = screen.getByRole("button", { name: /10-h rest · Jasper, AR/ });
     expect(within(rest).getByText("18:00")).toBeInTheDocument();
     expect(rest).toHaveTextContent("Sleeper berth · 10h · mile 604");
-    expect(screen.getByText("Thu, Oct 1")).toBeInTheDocument();
-    expect(screen.getByText("Fri, Oct 2")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Thu, Oct 1" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Fri, Oct 2" })).toBeInTheDocument();
   });
 
   it("selects a stop", async () => {

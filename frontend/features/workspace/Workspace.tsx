@@ -60,7 +60,7 @@ export function Workspace({ initialTrip = null }: { initialTrip?: Trip | null })
                   onClick={planner.cancelEdit}
                   className="mb-2 text-[11px] font-semibold text-muted hover:text-brand"
                 >
-                  ← Back to results
+                  <span aria-hidden="true">←</span> Back to results
                 </button>
               )}
               <TripForm

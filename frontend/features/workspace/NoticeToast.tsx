@@ -8,7 +8,7 @@ export function NoticeToast({ notice, onRetry, onDismiss }: { notice: Notice; on
     >
       <p className="flex-1">{notice.message}</p>
       {notice.retry && (
-        <button type="button" onClick={onRetry} className="rounded-full bg-coral px-3 py-1 text-xs font-bold">
+        <button type="button" onClick={onRetry} className="rounded-full bg-coral-ink px-3 py-1 text-xs font-bold">
           Retry
         </button>
       )}

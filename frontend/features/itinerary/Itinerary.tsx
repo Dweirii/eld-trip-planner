@@ -31,7 +31,7 @@ export function Itinerary({ stops, selectedStopId, onSelectStop }: ItineraryProp
     <ol aria-label="Itinerary" className="space-y-3">
       {groupByDate(stops).map(([date, dayStops]) => (
         <li key={date}>
-          <h4 className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-muted">{shortDate(date)}</h4>
+          <h3 className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-muted">{shortDate(date)}</h3>
           <ul className="mt-1 space-y-0.5">
             {dayStops.map((stop) => {
               const selected = stop.id === selectedStopId;

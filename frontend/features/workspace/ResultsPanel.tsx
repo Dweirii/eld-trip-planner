@@ -46,7 +46,7 @@ export function ResultsPanel({ trip, selectedStopId, onSelectStop, onEdit, onNew
             onClick={onEdit}
             className="rounded-full border-[1.5px] border-brand px-2.5 py-1 text-[11px] font-bold text-brand"
           >
-            ✎ Edit trip
+            <span aria-hidden="true">✎</span> Edit trip
           </button>
           <button type="button" onClick={onNewTrip} className="text-[11px] font-semibold text-muted hover:text-brand">
             New trip
