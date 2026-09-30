@@ -37,3 +37,6 @@ extend-exclude = ["*/migrations/*"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "DJ"]
 ignore = ["E501"]  # the formatter owns line length
+
+[tool.vercel.scripts]
+build = "python scripts/vercel_build.py"
