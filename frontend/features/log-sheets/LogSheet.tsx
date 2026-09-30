@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { type ReactNode, useId } from "react";
+import type { ReactNode } from "react";
 import type { DailyLog, DutyStatus } from "@/lib/api/types";
 import { logHours, miles, minuteLabel } from "@/lib/format";
 import { STATUS_NAMES } from "@/lib/stops";
@@ -32,8 +32,13 @@ const ROW_LABELS: Record<DutyStatus, [string, string?]> = {
   on_duty: ["4. On Duty", "(not driving)"],
 };
 
+/** More remarks than this print in two columns, so every day fits one landscape Letter page. */
+const SINGLE_COLUMN_REMARKS = 5;
+
 export interface LogSheetProps {
   log: DailyLog;
+  /** Whole miles to write for today (defaults to log.miles_today rounded; LogSheets makes the days add up). */
+  milesToday?: number;
   /** The stop id behind each bracket (same order as log.brackets), or null. */
   bracketStopIds?: readonly (string | null)[];
   selectedStopId?: string | null;
@@ -41,13 +46,14 @@ export interface LogSheetProps {
 }
 
 /** One Driver's Daily Log, drawn like the FMCSA paper form and filled in "by hand". */
-export function LogSheet({ log, bracketStopIds = [], selectedStopId = null, onSelectStop }: LogSheetProps) {
+export function LogSheet({ log, milesToday, bracketStopIds = [], selectedStopId = null, onSelectStop }: LogSheetProps) {
   const header = log.header;
+  const twoColumnRemarks = log.remarks.length > SINGLE_COLUMN_REMARKS;
   const [year, month, day] = log.date.split("-");
   return (
     <article
       aria-label={`Driver's daily log for ${log.date}`}
-      className="log-sheet mx-auto w-full min-w-[760px] max-w-[1000px] rounded-sm bg-paper px-7 pb-5 pt-6 font-mono text-ink print:min-w-0 shadow-[0_1px_0_#e6dcc8,0_14px_34px_rgb(4_59_75/0.13)]"
+      className="log-sheet mx-auto w-full min-w-[760px] max-w-[1000px] rounded-sm bg-paper px-7 pb-5 pt-6 font-mono text-ink shadow-[0_1px_0_#e6dcc8,0_14px_34px_rgb(4_59_75/0.13)] print:min-w-0 print:py-3"
     >
       <header className="grid grid-cols-[1.25fr_1fr_1.2fr] items-end gap-5">
         <div>
@@ -64,7 +70,7 @@ export function LogSheet({ log, bracketStopIds = [], selectedStopId = null, onSe
         </p>
       </header>
 
-      <div className="mt-3 grid grid-cols-2 gap-5">
+      <div className="mt-3 grid grid-cols-2 gap-5 print:mt-2">
         <Field label="From:" inline>
           <Ink>{log.from}</Ink>
         </Field>
@@ -73,9 +79,9 @@ export function LogSheet({ log, bracketStopIds = [], selectedStopId = null, onSe
         </Field>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-x-5 gap-y-3">
+      <div className="mt-3 grid grid-cols-3 gap-x-5 gap-y-3 print:mt-2 print:gap-y-2">
         <Field label="Total miles driving today">
-          <Ink>{miles(log.miles_today)}</Ink>
+          <Ink>{miles(milesToday ?? log.miles_today)}</Ink>
         </Field>
         <Field label="Name of carrier">
           <Ink>{header.carrier_name}</Ink>
@@ -96,21 +102,28 @@ export function LogSheet({ log, bracketStopIds = [], selectedStopId = null, onSe
 
       <DutyGrid log={log} bracketStopIds={bracketStopIds} selectedStopId={selectedStopId} onSelectStop={onSelectStop} />
 
-      <section className="mt-1 grid grid-cols-[1.3fr_1fr] gap-5">
-        <div>
+      {/* In print the remarks run the full width (two columns when there are many), so a day fits one page. */}
+      <section className="mt-1 grid grid-cols-[1.3fr_1fr] gap-5 print:gap-y-1">
+        <div className="print:contents">
           <Field label="Shipping documents · shipper & commodity">
             <Ink className="text-[18px]">{`${header.shipping_document} · ${header.shipper_commodity}`}</Ink>
           </Field>
-          <ol aria-label="Remarks" className="mt-2 space-y-0.5 text-[10px] leading-snug">
+          <ol
+            aria-label="Remarks"
+            className={clsx(
+              "mt-2 space-y-0.5 text-[10px] leading-snug print:col-span-2 print:mt-0 print:space-y-0 print:leading-tight",
+              twoColumnRemarks && "print:columns-2 print:gap-x-8",
+            )}
+          >
             {log.remarks.map((remark) => (
-              <li key={`${remark.minute}-${remark.note}`}>
-                <span className="tabular-nums">{remark.time}</span> · <Ink className="text-[15px]">{remark.place}</Ink>{" "}
-                — {remark.note}
+              <li key={`${remark.minute}-${remark.note}`} className="break-inside-avoid">
+                <span className="tabular-nums">{remark.time}</span> ·{" "}
+                <Ink className="text-[15px] print:text-[13px]">{remark.place}</Ink> — {remark.note}
               </li>
             ))}
           </ol>
         </div>
-        <p className="self-end text-[9px] leading-snug">
+        <p className="self-end text-[9px] leading-snug print:col-start-2 print:row-start-1">
           Home terminal: {header.home_terminal_address}. Enter name of place you reported and where released from
           work and when and where each change of duty occurred. Use time standard of home terminal: {header.time_zone}.
         </p>
@@ -118,7 +131,7 @@ export function LogSheet({ log, bracketStopIds = [], selectedStopId = null, onSe
 
       <footer
         data-role="recap"
-        className="mt-3 grid grid-cols-[1.1fr_repeat(4,1fr)_1.4fr] items-end gap-3 border-t-2 border-ink pt-2 text-[9px]"
+        className="mt-3 grid grid-cols-[1.1fr_repeat(4,1fr)_1.4fr] items-end gap-3 border-t-2 border-ink pt-2 text-[9px] print:mt-2"
       >
         <div>
           <b>Recap:</b> complete at end of day
@@ -139,94 +152,110 @@ function DutyGrid({
   selectedStopId,
   onSelectStop,
 }: Required<Pick<LogSheetProps, "log" | "bracketStopIds">> & Pick<LogSheetProps, "selectedStopId" | "onSelectStop">) {
-  const titleId = useId();
   const total = ROWS.reduce((sum, status) => sum + log.totals[status], 0);
   return (
     <>
+      {/* A group, not an img: an img role would hide the focusable bracket buttons inside it. */}
       <svg
         viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`}
-        className="mt-4 block w-full"
-        role="img"
-        aria-labelledby={titleId}
+        className="mt-4 block w-full print:mt-2"
+        role="group"
+        aria-label={`Duty status grid for ${log.date}`}
       >
-        <title id={titleId}>{`Duty status grid for ${log.date}`}</title>
-        <g fontSize={8.5} fill="currentColor">
-          {HOUR_LABELS.map((label, hour) => {
-            const x = minuteToX(hour * 60);
-            if (hour === 0 || hour === 24) {
+        <title>{`Duty status grid for ${log.date}`}</title>
+        <g aria-hidden="true">
+          <g fontSize={8.5} fill="currentColor">
+            {HOUR_LABELS.map((label, hour) => {
+              const x = minuteToX(hour * 60);
+              if (hour === 0 || hour === 24) {
+                return (
+                  <text key={hour} x={x} y={8} textAnchor="middle">
+                    Mid-
+                    <tspan x={x} dy={8}>
+                      night
+                    </tspan>
+                  </text>
+                );
+              }
               return (
-                <text key={hour} x={x} y={8} textAnchor="middle">
-                  Mid-
-                  <tspan x={x} dy={8}>
-                    night
-                  </tspan>
+                <text key={hour} x={x} y={14} textAnchor="middle">
+                  {label}
                 </text>
               );
-            }
-            return (
-              <text key={hour} x={x} y={14} textAnchor="middle">
-                {label}
-              </text>
-            );
-          })}
-          <text x={GRID.totalsX} y={8}>
-            Total
-            <tspan x={GRID.totalsX} dy={8}>
-              hours
-            </tspan>
-          </text>
-          {ROWS.map((status) => {
-            const [first, second] = ROW_LABELS[status];
-            return (
-              <text key={status} x={0} y={rowCenterY(status) + (second ? -1 : 3)}>
-                {first}
-                {second && (
-                  <tspan x={0} dy={9} fontSize={7.5}>
-                    {second}
-                  </tspan>
-                )}
-              </text>
-            );
-          })}
-        </g>
-
-        <g stroke="currentColor" fill="none">
-          {ROWS.map((status) => (
-            <rect key={status} x={GRID.left} y={rowTop(status)} width={GRID.width} height={GRID.rowHeight} strokeWidth={1.1} />
-          ))}
-          {hourLines().map((x) => (
-            <line key={x} x1={x} x2={x} y1={GRID.top} y2={GRID_BOTTOM} strokeWidth={0.8} />
-          ))}
-          {quarterTicks().map((tick) => (
-            <line key={`${tick.x}-${tick.y1}`} x1={tick.x} x2={tick.x} y1={tick.y1} y2={tick.y2} strokeWidth={0.7} />
-          ))}
-        </g>
-
-        <path
-          data-role="duty-line"
-          d={dutyPath(log.segments)}
-          fill="none"
-          stroke={INK_BLUE}
-          strokeWidth={2.6}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-        {changePoints(log.segments).map((point, index) => (
-          <circle key={index} cx={point.x} cy={point.y} r={2.3} fill={INK_BLUE} />
-        ))}
-
-        <g data-role="totals" className="font-hand" fontSize={19} fontWeight={700} fill={INK_BLUE}>
-          {ROWS.map((status) => (
-            <text key={status} x={GRID.totalsX} y={rowCenterY(status) + 6}>
-              {logHours(log.totals[status])}
+            })}
+            <text x={GRID.totalsX} y={8}>
+              Total
+              <tspan x={GRID.totalsX} dy={8}>
+                hours
+              </tspan>
             </text>
-          ))}
-          <text x={GRID.totalsX - 4} y={GRID_BOTTOM + 20}>{`=${logHours(total)}`}</text>
-        </g>
+            {ROWS.map((status) => {
+              const [first, second] = ROW_LABELS[status];
+              return (
+                <text key={status} x={0} y={rowCenterY(status) + (second ? -1 : 3)}>
+                  {first}
+                  {second && (
+                    <tspan x={0} dy={9} fontSize={7.5}>
+                      {second}
+                    </tspan>
+                  )}
+                </text>
+              );
+            })}
+          </g>
 
-        <text x={0} y={GRID_BOTTOM + 18} fontSize={8.5} fill="currentColor">
-          Remarks
-        </text>
+          <g stroke="currentColor" fill="none">
+            {ROWS.map((status) => (
+              <rect
+                key={status}
+                x={GRID.left}
+                y={rowTop(status)}
+                width={GRID.width}
+                height={GRID.rowHeight}
+                strokeWidth={1.1}
+              />
+            ))}
+            {hourLines().map((x) => (
+              <line key={x} x1={x} x2={x} y1={GRID.top} y2={GRID_BOTTOM} strokeWidth={0.8} />
+            ))}
+            {quarterTicks().map((tick) => (
+              <line
+                key={`${tick.x}-${tick.y1}`}
+                x1={tick.x}
+                x2={tick.x}
+                y1={tick.y1}
+                y2={tick.y2}
+                strokeWidth={0.7}
+              />
+            ))}
+          </g>
+
+          <path
+            data-role="duty-line"
+            d={dutyPath(log.segments)}
+            fill="none"
+            stroke={INK_BLUE}
+            strokeWidth={2.6}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          {changePoints(log.segments).map((point, index) => (
+            <circle key={index} cx={point.x} cy={point.y} r={2.3} fill={INK_BLUE} />
+          ))}
+
+          <g data-role="totals" className="font-hand" fontSize={19} fontWeight={700} fill={INK_BLUE}>
+            {ROWS.map((status) => (
+              <text key={status} x={GRID.totalsX} y={rowCenterY(status) + 6}>
+                {logHours(log.totals[status])}
+              </text>
+            ))}
+            <text x={GRID.totalsX - 4} y={GRID_BOTTOM + 20}>{`=${logHours(total)}`}</text>
+          </g>
+
+          <text x={0} y={GRID_BOTTOM + 18} fontSize={8.5} fill="currentColor">
+            Remarks
+          </text>
+        </g>
         {log.brackets.map((bracket, index) => {
           const stopId = bracketStopIds[index] ?? null;
           const selected = stopId !== null && stopId === selectedStopId;
@@ -241,7 +270,7 @@ function DutyGrid({
             />
           );
         })}
-        <g className="font-hand" fontSize={14} fontWeight={700} fill="currentColor">
+        <g aria-hidden="true" className="font-hand" fontSize={14} fontWeight={700} fill="currentColor">
           {bracketLabels(log.brackets).map((label) => (
             <text key={label.index} transform={`translate(${label.x},${LABEL_Y}) rotate(30)`}>
               {label.place}
@@ -249,6 +278,9 @@ function DutyGrid({
           ))}
         </g>
       </svg>
+      <p className="sr-only">
+        {`Totals: ${ROWS.map((status) => `${STATUS_NAMES[status]} ${logHours(log.totals[status])} h`).join(", ")}; ${logHours(total)} h in all.`}
+      </p>
       <table className="sr-only">
         <caption>{`Duty status segments for ${log.date}`}</caption>
         <thead>
@@ -319,7 +351,7 @@ function BracketMark({
 }) {
   const stroke = selected ? TEAL : INK_BLUE;
   const strokeWidth = selected ? 3 : 1.7;
-  if (!onSelect) return <path d={d} fill="none" stroke={stroke} strokeWidth={strokeWidth} />;
+  if (!onSelect) return <path aria-hidden="true" d={d} fill="none" stroke={stroke} strokeWidth={strokeWidth} />;
   return (
     <g
       role="button"
@@ -335,12 +367,23 @@ function BracketMark({
       }}
       className="group cursor-pointer outline-none"
     >
+      {/* Keyboard focus: a soft teal halo plus a thicker teal stroke (more than a colour change). */}
+      <path
+        d={d}
+        fill="none"
+        stroke={TEAL}
+        strokeOpacity={0.3}
+        strokeWidth={10}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="opacity-0 group-focus-visible:opacity-100"
+      />
       <path
         d={d}
         fill="none"
         stroke={stroke}
         strokeWidth={strokeWidth}
-        className="group-hover:stroke-[#008080] group-focus-visible:stroke-[#008080]"
+        className="group-hover:stroke-[#008080] group-focus-visible:stroke-[#008080] group-focus-visible:[stroke-width:3.4]"
       />
       <path d={d} fill="none" stroke="transparent" strokeWidth={14} pointerEvents="stroke" />
     </g>

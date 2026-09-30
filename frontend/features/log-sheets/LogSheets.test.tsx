@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { sampleTrip } from "@/lib/api/__fixtures__";
@@ -43,6 +43,14 @@ describe("LogSheets", () => {
     expect(day2).toHaveFocus();
     expect(day2).toHaveAttribute("aria-selected", "true");
     expect(sheetWrappers()[1]).not.toHaveClass("hidden");
+  });
+
+  it("writes whole miles per day that add up to the trip total", () => {
+    render(<LogSheets trip={sampleTrip} selectedStopId={null} onSelectStop={vi.fn()} />);
+    const [day1, day2] = screen.getAllByRole("article");
+    // 603.5 + 368.6 = 972.1 mi: 603 + 369 = 972, not 604 + 369 = 973.
+    expect(within(day1).getByText("603")).toBeInTheDocument();
+    expect(within(day2).getByText("369")).toBeInTheDocument();
   });
 
   it("follows the selected stop to its day", () => {

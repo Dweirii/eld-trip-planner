@@ -7,6 +7,7 @@ import type { Trip } from "@/lib/api/types";
 import { shortDate } from "@/lib/format";
 import { LogSheet } from "./LogSheet";
 import { dayIndexForStop, stopForBracket } from "./linking";
+import { dailyMiles } from "./miles";
 
 export interface LogSheetsProps {
   trip: Trip;
@@ -22,6 +23,10 @@ export function LogSheets({ trip, selectedStopId, onSelectStop }: LogSheetsProps
   const selectedStop = trip.stops.find((stop) => stop.id === selectedStopId);
   const visibleDay = selectedStop ? dayIndexForStop(logs, selectedStop) : activeDay;
   const tabsId = useId();
+  const milesPerDay = dailyMiles(
+    logs.map((log) => log.miles_today),
+    trip.summary.total_miles,
+  );
   const dayTabs = logs.map((log) => ({ id: log.date, label: `Day ${log.day_number} · ${shortDate(log.date)}` }));
 
   function chooseDay(date: string) {
@@ -75,6 +80,7 @@ export function LogSheets({ trip, selectedStopId, onSelectStop }: LogSheetsProps
           >
             <LogSheet
               log={log}
+              milesToday={milesPerDay[index]}
               bracketStopIds={log.brackets.map((bracket) => stopForBracket(trip.stops, log.date, bracket)?.id ?? null)}
               selectedStopId={selectedStopId}
               onSelectStop={onSelectStop}

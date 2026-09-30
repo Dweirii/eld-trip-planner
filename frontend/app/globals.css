@@ -25,9 +25,10 @@
   --font-hand: var(--font-caveat), cursive;
 }
 
+/* One log sheet per landscape Letter page (LogSheet tightens its layout in print to fit). */
 @page {
   size: letter landscape;
-  margin: 0.35in;
+  margin: 0.25in;
 }
 
 html,

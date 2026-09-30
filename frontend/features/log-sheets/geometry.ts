@@ -1,4 +1,4 @@
-/** Drawing math for the paper Driver's Daily Log grid, in SVG user units (viewBox 0 0 780 250). */
+/** Drawing math for the paper Driver's Daily Log grid, in SVG user units (viewBox 0 0 780 215). */
 import type { Bracket, DutyStatus, Segment } from "@/lib/api/types";
 
 export const MINUTES_PER_DAY = 1440;

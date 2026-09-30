@@ -54,6 +54,22 @@ describe("LogSheet", () => {
     expect(onSelectStop).toHaveBeenCalledWith("s3");
   });
 
+  it("exposes the grid as a labelled group so its bracket buttons reach assistive tech", () => {
+    const { container } = render(<LogSheet log={day1} bracketStopIds={["s3", "s5"]} onSelectStop={vi.fn()} />);
+    const grid = screen.getByRole("group", { name: "Duty status grid for 2026-10-01" });
+    expect(within(grid).getByRole("button", { name: "Stop at St. Louis, MO" })).toBeInTheDocument();
+    expect(container.querySelector('[data-role="duty-line"]')?.closest('[aria-hidden="true"]')).not.toBeNull();
+    expect(container.querySelector('[data-role="totals"]')?.closest('[aria-hidden="true"]')).not.toBeNull();
+    expect(screen.getByText(/Totals: Off duty 6 h, Sleeper berth 6 h, Driving 11 h, On duty \(not driving\) 1 h/)).toHaveClass(
+      "sr-only",
+    );
+  });
+
+  it("writes the miles it is given (so the days can add up to the trip total)", () => {
+    render(<LogSheet log={day1} milesToday={603} />);
+    expect(screen.getByText("603")).toBeInTheDocument();
+  });
+
   it("makes brackets keyboard focusable and selectable with Enter", async () => {
     const onSelectStop = vi.fn();
     render(<LogSheet log={day1} bracketStopIds={["s3", "s5"]} onSelectStop={onSelectStop} />);
