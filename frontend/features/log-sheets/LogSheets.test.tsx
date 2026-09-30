@@ -24,8 +24,25 @@ describe("LogSheets", () => {
     await userEvent.click(screen.getByRole("tab", { name: "Day 2 · Fri, Oct 2" }));
     expect(sheetWrappers()[0]).toHaveClass("hidden");
     expect(sheetWrappers()[1]).not.toHaveClass("hidden");
-    await userEvent.click(screen.getByRole("tab", { name: "Show all" }));
+    await userEvent.click(screen.getByRole("button", { name: "Show all" }));
     expect(sheetWrappers().filter((w) => w.classList.contains("hidden"))).toHaveLength(0);
+    expect(screen.getAllByRole("tab").filter((tab) => tab.getAttribute("aria-selected") === "true")).toHaveLength(0);
+    expect(screen.getByRole("button", { name: "Show all" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("links each day tab to its sheet and moves between days with the arrow keys", async () => {
+    render(<LogSheets trip={sampleTrip} selectedStopId={null} onSelectStop={vi.fn()} />);
+    const [day1, day2] = screen.getAllByRole("tab");
+    const [panel1] = sheetWrappers();
+    expect(panel1).toHaveAttribute("role", "tabpanel");
+    expect(day1).toHaveAttribute("aria-controls", panel1.id);
+    expect(panel1).toHaveAttribute("aria-labelledby", day1.id);
+
+    day1.focus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(day2).toHaveFocus();
+    expect(day2).toHaveAttribute("aria-selected", "true");
+    expect(sheetWrappers()[1]).not.toHaveClass("hidden");
   });
 
   it("follows the selected stop to its day", () => {

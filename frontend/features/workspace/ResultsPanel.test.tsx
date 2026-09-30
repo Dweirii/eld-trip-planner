@@ -21,11 +21,16 @@ describe("ResultsPanel", () => {
 
   it("switches between itinerary, rules and assumptions", async () => {
     setup();
-    expect(screen.getByRole("list", { name: "Itinerary" })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("tab", { name: /Rules 7\/7/ }));
-    expect(screen.getByText("14-hour driving window")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("tab", { name: "Assumptions" }));
-    expect(screen.getByText(/Only driving is barred/)).toBeInTheDocument();
+    expect(screen.getByRole("tabpanel", { name: "Itinerary" })).toContainElement(
+      screen.getByRole("list", { name: "Itinerary" }),
+    );
+    await userEvent.click(screen.getByRole("tab", { name: "Rules 7/7" }));
+    expect(screen.getByRole("tabpanel", { name: "Rules 7/7" })).toBeVisible();
+    expect(screen.getByText("14-hour driving window")).toBeVisible();
+    expect(screen.queryByRole("list", { name: "Itinerary" })).not.toBeInTheDocument();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(screen.getByRole("tab", { name: "Assumptions" })).toHaveFocus();
+    expect(screen.getByText(/Only driving is barred/)).toBeVisible();
   });
 
   it("edits or starts over", async () => {

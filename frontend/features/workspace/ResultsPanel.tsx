@@ -1,7 +1,8 @@
 "use client";
 
 import clsx from "clsx";
-import { useState } from "react";
+import { useId, useState } from "react";
+import { type TabItem, TabPanel, Tabs } from "@/components/ui/Tabs";
 import { Assumptions } from "@/features/compliance/Assumptions";
 import { RuleChecks } from "@/features/compliance/RuleChecks";
 import { Itinerary } from "@/features/itinerary/Itinerary";
@@ -20,15 +21,24 @@ export interface ResultsPanelProps {
 
 export function ResultsPanel({ trip, selectedStopId, onSelectStop, onEdit, onNewTrip }: ResultsPanelProps) {
   const [tab, setTab] = useState<Tab>("itinerary");
+  const tabsId = useId();
   const { inputs, summary } = trip;
   const passed = trip.compliance.filter((check) => check.passed).length;
   const title = [inputs.current_location, inputs.pickup_location, inputs.dropoff_location]
     .map((place) => cityOf(place.label))
     .join(" → ");
-  const tabs: [Tab, string][] = [
-    ["itinerary", "Itinerary"],
-    ["rules", `Rules ${passed}/${trip.compliance.length} ${passed === trip.compliance.length ? "✓" : "✕"}`],
-    ["assumptions", "Assumptions"],
+  const allPassed = passed === trip.compliance.length;
+  const tabs: TabItem<Tab>[] = [
+    { id: "itinerary", label: "Itinerary" },
+    {
+      id: "rules",
+      label: (
+        <>
+          {`Rules ${passed}/${trip.compliance.length}`} <span aria-hidden="true">{allPassed ? "✓" : "✕"}</span>
+        </>
+      ),
+    },
+    { id: "assumptions", label: "Assumptions" },
   ];
 
   return (
@@ -60,31 +70,30 @@ export function ResultsPanel({ trip, selectedStopId, onSelectStop, onEdit, onNew
         <Stat label="door to door" value={duration(minutesBetween(summary.starts_at, summary.arrives_at))} />
       </dl>
 
-      <div role="tablist" aria-label="Trip details" className="flex gap-1 rounded-full bg-[#eef4f4] p-1">
-        {tabs.map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            onClick={() => setTab(id)}
-            className={clsx(
-              "flex-1 rounded-full px-2 py-1.5 text-[11.5px] font-bold",
-              tab === id ? "bg-white text-text shadow-[0_1px_4px_rgb(4_59_75/0.12)]" : "text-[#4b6770]",
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        idBase={tabsId}
+        label="Trip details"
+        items={tabs}
+        selected={tab}
+        onSelect={setTab}
+        className="flex gap-1 rounded-full bg-[#eef4f4] p-1"
+        tabClassName={(selected) =>
+          clsx(
+            "flex-1 rounded-full px-2 py-1.5 text-[11.5px] font-bold",
+            selected ? "bg-white text-text shadow-[0_1px_4px_rgb(4_59_75/0.12)]" : "text-[#4b6770]",
+          )
+        }
+      />
 
-      <div role="tabpanel" aria-label={tabs.find(([id]) => id === tab)?.[1]}>
-        {tab === "itinerary" && (
-          <Itinerary stops={trip.stops} selectedStopId={selectedStopId} onSelectStop={onSelectStop} />
-        )}
-        {tab === "rules" && <RuleChecks checks={trip.compliance} />}
-        {tab === "assumptions" && <Assumptions assumptions={trip.assumptions} />}
-      </div>
+      <TabPanel idBase={tabsId} id="itinerary" hidden={tab !== "itinerary"}>
+        <Itinerary stops={trip.stops} selectedStopId={selectedStopId} onSelectStop={onSelectStop} />
+      </TabPanel>
+      <TabPanel idBase={tabsId} id="rules" hidden={tab !== "rules"}>
+        <RuleChecks checks={trip.compliance} />
+      </TabPanel>
+      <TabPanel idBase={tabsId} id="assumptions" hidden={tab !== "assumptions"}>
+        <Assumptions assumptions={trip.assumptions} />
+      </TabPanel>
     </div>
   );
 }

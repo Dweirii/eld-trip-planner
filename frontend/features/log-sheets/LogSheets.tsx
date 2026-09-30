@@ -1,7 +1,8 @@
 "use client";
 
 import clsx from "clsx";
-import { useState } from "react";
+import { useId, useState } from "react";
+import { TabPanel, Tabs } from "@/components/ui/Tabs";
 import type { Trip } from "@/lib/api/types";
 import { shortDate } from "@/lib/format";
 import { LogSheet } from "./LogSheet";
@@ -20,12 +21,17 @@ export function LogSheets({ trip, selectedStopId, onSelectStop }: LogSheetsProps
   const [showAll, setShowAll] = useState(false);
   const selectedStop = trip.stops.find((stop) => stop.id === selectedStopId);
   const visibleDay = selectedStop ? dayIndexForStop(logs, selectedStop) : activeDay;
+  const tabsId = useId();
+  const dayTabs = logs.map((log) => ({ id: log.date, label: `Day ${log.day_number} · ${shortDate(log.date)}` }));
 
-  function chooseDay(index: number) {
+  function chooseDay(date: string) {
     setShowAll(false);
-    setActiveDay(index);
+    setActiveDay(Math.max(0, logs.findIndex((log) => log.date === date)));
     if (selectedStop) onSelectStop(null);
   }
+
+  const pill = (active: boolean) =>
+    clsx("rounded-full px-3 py-1.5 text-xs font-semibold", active ? "bg-brand text-white" : "bg-[#e3eeee] text-text");
 
   return (
     <section aria-labelledby="daily-logs-heading" className="px-4 pb-10 pt-6 print:p-0">
@@ -33,35 +39,18 @@ export function LogSheets({ trip, selectedStopId, onSelectStop }: LogSheetsProps
         <h2 id="daily-logs-heading" className="mr-2 text-base font-extrabold">
           Daily logs
         </h2>
-        <div role="tablist" aria-label="Log days" className="flex flex-wrap gap-2">
-          {logs.map((log, index) => (
-            <button
-              key={log.date}
-              type="button"
-              role="tab"
-              aria-selected={!showAll && index === visibleDay}
-              onClick={() => chooseDay(index)}
-              className={clsx(
-                "rounded-full px-3 py-1.5 text-xs font-semibold",
-                !showAll && index === visibleDay ? "bg-brand text-white" : "bg-[#e3eeee] text-text",
-              )}
-            >
-              {`Day ${log.day_number} · ${shortDate(log.date)}`}
-            </button>
-          ))}
-          <button
-            type="button"
-            role="tab"
-            aria-selected={showAll}
-            onClick={() => setShowAll(true)}
-            className={clsx(
-              "rounded-full px-3 py-1.5 text-xs font-semibold",
-              showAll ? "bg-brand text-white" : "bg-[#e3eeee] text-text",
-            )}
-          >
-            Show all
-          </button>
-        </div>
+        <Tabs
+          idBase={tabsId}
+          label="Log days"
+          items={dayTabs}
+          selected={showAll ? null : (logs[visibleDay]?.date ?? null)}
+          onSelect={chooseDay}
+          className="flex flex-wrap gap-2"
+          tabClassName={pill}
+        />
+        <button type="button" aria-pressed={showAll} onClick={() => setShowAll(true)} className={pill(showAll)}>
+          Show all
+        </button>
         <button
           type="button"
           onClick={() => window.print()}
@@ -73,8 +62,11 @@ export function LogSheets({ trip, selectedStopId, onSelectStop }: LogSheetsProps
 
       <div className="mt-4 space-y-8 print:mt-0 print:space-y-0">
         {logs.map((log, index) => (
-          <div
+          <TabPanel
             key={log.date}
+            idBase={tabsId}
+            id={log.date}
+            // Hidden days stay in the DOM (class, not the hidden attribute) so printing gets every day.
             className={clsx(
               "overflow-x-auto pb-2 print:overflow-visible print:pb-0",
               index < logs.length - 1 && "print:break-after-page",
@@ -87,7 +79,7 @@ export function LogSheets({ trip, selectedStopId, onSelectStop }: LogSheetsProps
               selectedStopId={selectedStopId}
               onSelectStop={onSelectStop}
             />
-          </div>
+          </TabPanel>
         ))}
       </div>
     </section>
