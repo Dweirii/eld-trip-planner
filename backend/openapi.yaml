@@ -1,0 +1,740 @@
+openapi: 3.0.3
+info:
+  title: Milepost API
+  version: 1.0.0
+  description: Plans property-carrying truck trips under FMCSA Hours-of-Service rules
+    (49 CFR Part 395) and returns the route, required stops, daily log sheets and
+    a compliance report.
+paths:
+  /api/geocode/:
+    get:
+      operationId: geocode_list
+      summary: Search US places (autocomplete)
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          maximum: 10
+          minimum: 1
+          default: 5
+      - in: query
+        name: q
+        schema:
+          type: string
+          minLength: 3
+          maxLength: 200
+        required: true
+      tags:
+      - geocode
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Place'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/geocode/reverse/:
+    get:
+      operationId: geocode_reverse_retrieve
+      summary: Nearest US town to a coordinate
+      parameters:
+      - in: query
+        name: lat
+        schema:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        required: true
+      - in: query
+        name: lng
+        schema:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+        required: true
+      tags:
+      - geocode
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Place'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/trips/:
+    post:
+      operationId: trips_create
+      description: Geocodes the stops, routes a truck, applies the HOS rules, and
+        saves the plan.
+      summary: Plan a trip
+      tags:
+      - trips
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TripRequestRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/trips/{trip_id}/:
+    get:
+      operationId: trips_retrieve
+      summary: Get a planned trip
+      parameters:
+      - in: path
+        name: trip_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - trips
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+components:
+  schemas:
+    Assumptions:
+      type: object
+      properties:
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleDescription'
+        notes:
+          type: array
+          items:
+            type: string
+      required:
+      - notes
+      - rules
+    Bracket:
+      type: object
+      properties:
+        start_minute:
+          type: integer
+        end_minute:
+          type: integer
+        place:
+          type: string
+      required:
+      - end_minute
+      - place
+      - start_minute
+    DailyLog:
+      type: object
+      properties:
+        date:
+          type: string
+        day_number:
+          type: integer
+        from:
+          type: string
+        to:
+          type: string
+        miles_today:
+          type: number
+          format: double
+        segments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Segment'
+        totals:
+          $ref: '#/components/schemas/Totals'
+        remarks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Remark'
+        brackets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Bracket'
+        header:
+          $ref: '#/components/schemas/LogHeader'
+        recap:
+          $ref: '#/components/schemas/Recap'
+      required:
+      - brackets
+      - date
+      - day_number
+      - from
+      - header
+      - miles_today
+      - recap
+      - remarks
+      - segments
+      - to
+      - totals
+    Error:
+      type: object
+      description: OpenAPI description of the error envelope.
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+      required:
+      - error
+    ErrorBody:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        field:
+          type: string
+        details: {}
+      required:
+      - code
+      - message
+    Geometry:
+      type: object
+      properties:
+        type:
+          type: string
+        coordinates:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+              format: double
+      required:
+      - coordinates
+      - type
+    HomeTimeZone:
+      type: object
+      properties:
+        iana:
+          type: string
+        abbreviation:
+          type: string
+        utc_offset:
+          type: string
+      required:
+      - abbreviation
+      - iana
+      - utc_offset
+    KindEnum:
+      enum:
+      - start
+      - pickup
+      - dropoff
+      - fuel
+      - break
+      - rest
+      - restart
+      type: string
+      description: |-
+        * `start` - start
+        * `pickup` - pickup
+        * `dropoff` - dropoff
+        * `fuel` - fuel
+        * `break` - break
+        * `rest` - rest
+        * `restart` - restart
+    LocationInputRequest:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 200
+        lat:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        lng:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+      required:
+      - label
+    LogDetails:
+      type: object
+      properties:
+        driver_name:
+          type: string
+          maxLength: 80
+        co_driver_name:
+          type: string
+          maxLength: 80
+        carrier_name:
+          type: string
+          maxLength: 120
+        main_office_address:
+          type: string
+          maxLength: 160
+        home_terminal_address:
+          type: string
+          maxLength: 160
+        truck_number:
+          type: string
+          maxLength: 40
+        trailer_number:
+          type: string
+          maxLength: 40
+        shipping_document:
+          type: string
+          maxLength: 80
+        shipper_commodity:
+          type: string
+          maxLength: 160
+    LogDetailsRequest:
+      type: object
+      properties:
+        driver_name:
+          type: string
+          maxLength: 80
+        co_driver_name:
+          type: string
+          maxLength: 80
+        carrier_name:
+          type: string
+          maxLength: 120
+        main_office_address:
+          type: string
+          maxLength: 160
+        home_terminal_address:
+          type: string
+          maxLength: 160
+        truck_number:
+          type: string
+          maxLength: 40
+        trailer_number:
+          type: string
+          maxLength: 40
+        shipping_document:
+          type: string
+          maxLength: 80
+        shipper_commodity:
+          type: string
+          maxLength: 160
+    LogHeader:
+      type: object
+      properties:
+        driver_name:
+          type: string
+          maxLength: 80
+        co_driver_name:
+          type: string
+          maxLength: 80
+        carrier_name:
+          type: string
+          maxLength: 120
+        main_office_address:
+          type: string
+          maxLength: 160
+        home_terminal_address:
+          type: string
+          maxLength: 160
+        truck_number:
+          type: string
+          maxLength: 40
+        trailer_number:
+          type: string
+          maxLength: 40
+        shipping_document:
+          type: string
+          maxLength: 80
+        shipper_commodity:
+          type: string
+          maxLength: 160
+        time_zone:
+          type: string
+      required:
+      - time_zone
+    Place:
+      type: object
+      properties:
+        label:
+          type: string
+        lat:
+          type: number
+          format: double
+        lng:
+          type: number
+          format: double
+      required:
+      - label
+      - lat
+      - lng
+    Recap:
+      type: object
+      properties:
+        on_duty_today:
+          type: number
+          format: double
+        a_last_7_days:
+          type: number
+          format: double
+        b_available_tomorrow:
+          type: number
+          format: double
+        c_last_5_days:
+          type: number
+          format: double
+      required:
+      - a_last_7_days
+      - b_available_tomorrow
+      - c_last_5_days
+      - on_duty_today
+    Remark:
+      type: object
+      properties:
+        minute:
+          type: integer
+        time:
+          type: string
+        place:
+          type: string
+        note:
+          type: string
+      required:
+      - minute
+      - note
+      - place
+      - time
+    Route:
+      type: object
+      properties:
+        geometry:
+          $ref: '#/components/schemas/Geometry'
+        legs:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouteLeg'
+      required:
+      - geometry
+      - legs
+    RouteLeg:
+      type: object
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+        miles:
+          type: number
+          format: double
+        hours:
+          type: number
+          format: double
+      required:
+      - from
+      - hours
+      - miles
+      - to
+    RuleCheck:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        citation:
+          type: string
+        limit:
+          type: number
+          format: double
+        observed:
+          type: number
+          format: double
+        unit:
+          type: string
+        passed:
+          type: boolean
+      required:
+      - citation
+      - id
+      - limit
+      - observed
+      - passed
+      - title
+      - unit
+    RuleDescription:
+      type: object
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+        source:
+          type: string
+      required:
+      - label
+      - source
+      - value
+    Segment:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        start_minute:
+          type: integer
+        end_minute:
+          type: integer
+      required:
+      - end_minute
+      - start_minute
+      - status
+    StatusEnum:
+      enum:
+      - off_duty
+      - sleeper_berth
+      - driving
+      - on_duty
+      type: string
+      description: |-
+        * `off_duty` - off_duty
+        * `sleeper_berth` - sleeper_berth
+        * `driving` - driving
+        * `on_duty` - on_duty
+    Stop:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        starts_at:
+          type: string
+        ends_at:
+          type: string
+        duration_minutes:
+          type: integer
+        mile:
+          type: number
+          format: double
+        lat:
+          type: number
+          format: double
+        lng:
+          type: number
+          format: double
+        place:
+          type: string
+      required:
+      - duration_minutes
+      - ends_at
+      - id
+      - kind
+      - lat
+      - lng
+      - mile
+      - place
+      - starts_at
+      - status
+    Summary:
+      type: object
+      properties:
+        total_miles:
+          type: number
+          format: double
+        driving_hours:
+          type: number
+          format: double
+        on_duty_hours:
+          type: number
+          format: double
+        starts_at:
+          type: string
+        arrives_at:
+          type: string
+        days:
+          type: integer
+        stops:
+          type: object
+          additionalProperties:
+            type: integer
+      required:
+      - arrives_at
+      - days
+      - driving_hours
+      - on_duty_hours
+      - starts_at
+      - stops
+      - total_miles
+    Totals:
+      type: object
+      properties:
+        off_duty:
+          type: number
+          format: double
+        sleeper_berth:
+          type: number
+          format: double
+        driving:
+          type: number
+          format: double
+        on_duty:
+          type: number
+          format: double
+      required:
+      - driving
+      - off_duty
+      - on_duty
+      - sleeper_berth
+    TripInputs:
+      type: object
+      properties:
+        current_location:
+          $ref: '#/components/schemas/Place'
+        pickup_location:
+          $ref: '#/components/schemas/Place'
+        dropoff_location:
+          $ref: '#/components/schemas/Place'
+        current_cycle_used_hours:
+          type: number
+          format: double
+        start_time:
+          type: string
+        log_details:
+          $ref: '#/components/schemas/LogDetails'
+      required:
+      - current_cycle_used_hours
+      - current_location
+      - dropoff_location
+      - log_details
+      - pickup_location
+      - start_time
+    TripRequestRequest:
+      type: object
+      properties:
+        current_location:
+          $ref: '#/components/schemas/LocationInputRequest'
+        pickup_location:
+          $ref: '#/components/schemas/LocationInputRequest'
+        dropoff_location:
+          $ref: '#/components/schemas/LocationInputRequest'
+        current_cycle_used_hours:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,2})?$
+        start_time:
+          type: string
+          minLength: 1
+          description: Local home-terminal time, YYYY-MM-DDTHH:MM. Defaults to now.
+        log_details:
+          $ref: '#/components/schemas/LogDetailsRequest'
+      required:
+      - current_cycle_used_hours
+      - current_location
+      - dropoff_location
+      - pickup_location
+    TripResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        created_at:
+          type: string
+        engine_version:
+          type: string
+        inputs:
+          $ref: '#/components/schemas/TripInputs'
+        home_time_zone:
+          $ref: '#/components/schemas/HomeTimeZone'
+        summary:
+          $ref: '#/components/schemas/Summary'
+        route:
+          $ref: '#/components/schemas/Route'
+        stops:
+          type: array
+          items:
+            $ref: '#/components/schemas/Stop'
+        daily_logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/DailyLog'
+        compliance:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleCheck'
+        assumptions:
+          $ref: '#/components/schemas/Assumptions'
+      required:
+      - assumptions
+      - compliance
+      - created_at
+      - daily_logs
+      - engine_version
+      - home_time_zone
+      - id
+      - inputs
+      - route
+      - stops
+      - summary
