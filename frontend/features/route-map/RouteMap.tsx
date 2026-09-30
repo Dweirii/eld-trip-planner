@@ -11,6 +11,10 @@ import { createMarkerElement, popupContent, stopPopupLines, stopTitle } from "./
 
 const WORKER_URL = "/maplibre/maplibre-gl-worker.mjs";
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
+const LOWER_48: maplibregl.LngLatBoundsLike = [
+  [-124.8, 24.4],
+  [-66.9, 49.4],
+];
 const EMPTY: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
 function line(coordinates: readonly LngLat[]): GeoJSON.FeatureCollection {
@@ -80,17 +84,19 @@ export default function RouteMap({ trip, preview, selectedStopId, onSelectStop }
     const map = new maplibregl.Map({
       container,
       style: STYLE_URL,
-      center: [-96.5, 38.5],
-      zoom: 3.3,
+      bounds: LOWER_48,
+      fitBoundsOptions: { padding: panelPadding(container) },
       attributionControl: false,
     });
+    const desktop = window.matchMedia("(min-width: 1024px)").matches;
     map.addControl(
       new maplibregl.AttributionControl({
         compact: true,
         customAttribution: "Routing © openrouteservice.org · Search © Photon · Towns © GeoNames",
       }),
+      desktop ? "bottom-right" : "top-left",
     );
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    if (desktop) map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     map.on("load", () => {
       map.addSource("route", { type: "geojson", data: EMPTY });
       map.addLayer({
