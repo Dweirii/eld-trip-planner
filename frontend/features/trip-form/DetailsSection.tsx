@@ -11,7 +11,7 @@ export interface DetailsSectionProps {
 /** Optional start time and log-sheet header details (defaults are filled in by the API). */
 export function DetailsSection({ values, onChange, error }: DetailsSectionProps) {
   return (
-    <details className="group text-[12px]">
+    <details className="group text-[12px]" open={error ? true : undefined}>
       <summary className="cursor-pointer list-none font-bold text-teal">
         <span className="group-open:hidden">+ Start time &amp; log sheet details</span>
         <span className="hidden group-open:inline">− Start time &amp; log sheet details</span>

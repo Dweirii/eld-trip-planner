@@ -56,4 +56,9 @@ describe("TripForm", () => {
     await userEvent.click(screen.getByRole("button", { name: /Multi-day/ }));
     expect(props.onExample).toHaveBeenCalledWith(EXAMPLE_TRIPS[1].values);
   });
+
+  it("opens the details section when the start time has an error", () => {
+    setup({ errors: { startTime: "Pick a date and time." } });
+    expect(screen.getByText("Pick a date and time.").closest("details")).toHaveAttribute("open");
+  });
 });
