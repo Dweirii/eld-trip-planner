@@ -1,0 +1,6 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type": "Feature", "properties": {"osm_key": "highway", "osm_value": "residential", "type": "street", "name": "East Sequoyah Avenue", "city": "Vinita", "state": "Oklahoma", "country": "United States", "countrycode": "US"}, "geometry": {"type": "Point", "coordinates": [-95.1501, 36.6402]}}
+  ]
+}

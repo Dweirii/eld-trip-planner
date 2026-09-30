@@ -1,0 +1,10 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type": "Feature", "properties": {"osm_key": "place", "osm_value": "city", "type": "city", "name": "Saint Louis", "state": "Missouri", "country": "United States", "countrycode": "US"}, "geometry": {"type": "Point", "coordinates": [-90.190009, 38.6254063]}},
+    {"type": "Feature", "properties": {"osm_key": "place", "osm_value": "town", "type": "city", "name": "East Saint Louis", "state": "Illinois", "country": "United States", "countrycode": "US"}, "geometry": {"type": "Point", "coordinates": [-90.159707, 38.6268666]}},
+    {"type": "Feature", "properties": {"osm_key": "place", "osm_value": "city", "type": "city", "name": "Saint Louis", "state": "Missouri", "country": "United States", "countrycode": "US"}, "geometry": {"type": "Point", "coordinates": [-90.19, 38.62]}},
+    {"type": "Feature", "properties": {"osm_key": "place", "osm_value": "city", "type": "city", "name": "Saint-Louis", "state": "Ontario", "country": "Canada", "countrycode": "CA"}, "geometry": {"type": "Point", "coordinates": [-79.5, 43.6]}},
+    {"type": "Feature", "properties": {"osm_key": "place", "osm_value": "town", "type": "city", "name": "San Luis", "state": "Puerto Rico", "country": "United States", "countrycode": "US"}, "geometry": {"type": "Point", "coordinates": [-66.1, 18.4]}}
+  ]
+}

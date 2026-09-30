@@ -1,0 +1,7 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type": "Feature", "properties": {"osm_key": "building", "osm_value": "commercial", "type": "house", "housenumber": "2100", "street": "Ross Avenue", "name": "2100 Ross Ave Tower", "city": "Dallas", "state": "Texas", "postcode": "75201", "country": "United States", "countrycode": "US"}, "geometry": {"type": "Point", "coordinates": [-96.8008, 32.7889]}},
+    {"type": "Feature", "properties": {"osm_key": "place", "osm_value": "house", "type": "house", "housenumber": "2150", "street": "Ross Avenue", "city": "Dallas", "state": "Texas", "country": "United States", "countrycode": "US"}, "geometry": {"type": "Point", "coordinates": [-96.8001, 32.7893]}}
+  ]
+}
