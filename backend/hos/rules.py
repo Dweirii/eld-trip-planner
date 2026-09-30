@@ -37,8 +37,13 @@ ASSUMPTIONS: tuple[str, ...] = (
     "Any 30 consecutive minutes not driving satisfies the 30-minute break "
     "(off duty, sleeper berth, fueling, pickup or dropoff).",
     "Daily 10-hour rests are logged in the sleeper berth; breaks and 34-hour restarts off duty.",
+    "Only driving is barred once the 11-hour, 14-hour or 70-hour limit is reached; on-duty work "
+    "such as fueling, pickup or dropoff may continue, so a daily recap can show more than "
+    "70 on-duty hours.",
     "Times use the home terminal's time zone (the current location) at its UTC offset at trip start.",
     "Drive times come from a truck-profile route and are rounded to the 15-minute log grid.",
+    "Log-sheet header details (driver, carrier, truck/trailer, shipping document) are optional "
+    "inputs with sensible defaults.",
 )
 
 
@@ -78,7 +83,7 @@ def describe(rules: HOSRules = DEFAULT_RULES) -> list[dict[str, str]]:
         {
             "label": "Fueling",
             "value": f"every {rules.fuel_interval_mi:,.0f} mi, {rules.fuel_min} min",
-            "source": "Assessment brief",
+            "source": "Assessment brief (interval); duration assumed",
         },
         {
             "label": "Pickup / dropoff",

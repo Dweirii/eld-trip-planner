@@ -1,5 +1,5 @@
 from hos.models import DutyEvent, DutyStatus, EventKind, TripPlan
-from hos.rules import DEFAULT_RULES, describe
+from hos.rules import ASSUMPTIONS, DEFAULT_RULES, describe
 
 
 def test_each_event_kind_maps_to_a_log_line():
@@ -51,3 +51,21 @@ def test_describe_lists_every_rule_with_a_source():
         "source": "49 CFR 395.3(a)(3)",
     } in rows
     assert all(row["source"] for row in rows)
+
+
+def test_fueling_row_names_the_assumed_duration():
+    fueling = next(row for row in describe(DEFAULT_RULES) if row["label"] == "Fueling")
+    assert fueling["source"] == "Assessment brief (interval); duration assumed"
+
+
+def test_assumptions_cover_on_duty_after_limits_and_header_defaults():
+    assert (
+        "Only driving is barred once the 11-hour, 14-hour or 70-hour limit is reached; on-duty "
+        "work such as fueling, pickup or dropoff may continue, so a daily recap can show more "
+        "than 70 on-duty hours."
+    ) in ASSUMPTIONS
+    assert (
+        "Log-sheet header details (driver, carrier, truck/trailer, shipping document) are "
+        "optional inputs with sensible defaults."
+    ) in ASSUMPTIONS
+    assert ASSUMPTIONS[-1].startswith("Log-sheet header details")
