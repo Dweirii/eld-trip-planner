@@ -1,0 +1,47 @@
+# ── Local-only material ─────────────────────────────
+/requirements/
+/.superpowers/
+CLAUDE.md
+AGENTS.md
+.claude/
+
+# ── Secrets ─────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── OS / editors ────────────────────────────────────
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# ── Python (backend) ────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+.coverage
+htmlcov/
+db.sqlite3
+/backend/staticfiles/
+
+# ── Node / Next.js (frontend) ───────────────────────
+node_modules/
+.pnp
+.pnp.*
+.next/
+out/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ── Vercel ──────────────────────────────────────────
+.vercel
