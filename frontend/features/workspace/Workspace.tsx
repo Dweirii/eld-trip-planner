@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo } from "react";
 import { LogSheets } from "@/features/log-sheets/LogSheets";
-import { previewPoints } from "@/features/trip-form/model";
+import { type PreviewPoint, previewPoints } from "@/features/trip-form/model";
 import { TripForm } from "@/features/trip-form/TripForm";
 import { api } from "@/lib/api/client";
 import type { Trip } from "@/lib/api/types";
@@ -16,6 +16,9 @@ const RouteMap = dynamic(() => import("@/features/route-map/RouteMap"), {
   ssr: false,
   loading: () => <div className="absolute inset-0 bg-[#e8efef]" aria-hidden="true" />,
 });
+
+/** One shared empty preview, so showing results never hands the map a "new" array. */
+const NO_PREVIEW: PreviewPoint[] = [];
 
 /** The map workspace: the map fills the screen, the panel floats over it, the log sheets follow. */
 export function Workspace({ initialTrip = null }: { initialTrip?: Trip | null }) {
@@ -38,7 +41,7 @@ export function Workspace({ initialTrip = null }: { initialTrip?: Trip | null })
       >
         <RouteMap
           trip={showResults ? trip : null}
-          preview={showResults ? [] : preview}
+          preview={showResults ? NO_PREVIEW : preview}
           selectedStopId={selectedStopId}
           onSelectStop={planner.selectStop}
         />
