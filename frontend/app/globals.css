@@ -23,6 +23,11 @@
   --font-hand: var(--font-caveat), cursive;
 }
 
+@page {
+  size: letter landscape;
+  margin: 0.35in;
+}
+
 html,
 body {
   height: 100%;
@@ -34,9 +39,15 @@ body {
   font-family: var(--font-sans);
 }
 
-:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--color-teal) 55%, transparent);
-  outline-offset: 2px;
+@layer base {
+  :focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--color-teal) 55%, transparent);
+    outline-offset: 2px;
+  }
+
+  header :focus-visible {
+    outline-color: var(--color-mint);
+  }
 }
 
 /* Map stop markers: the outer element is positioned by MapLibre; the inner span carries the shape. */
@@ -95,19 +106,19 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .animate-draw-route {
     animation: none;
+    stroke-dasharray: none;
   }
 }
 
 @media print {
-  @page {
-    size: letter landscape;
-    margin: 0.35in;
+  html,
+  body {
+    height: auto;
   }
   body {
     background: #fff;
   }
   .log-sheet {
     box-shadow: none;
-    break-after: page;
   }
 }
