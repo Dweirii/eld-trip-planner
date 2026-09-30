@@ -82,4 +82,31 @@ describe("usePlanner", () => {
     expect(result.current.errors.pickup).toBeUndefined();
     expect(result.current.errors.current).toBe("Enter a location.");
   });
+
+  it("discards a plan result that arrives after the form was reset", async () => {
+    let resolve: (trip: typeof sampleTrip) => void = () => undefined;
+    planTrip.mockReturnValue(new Promise((r) => { resolve = r; }));
+    const { result } = renderHook(() => usePlanner(null));
+    let planning: Promise<void> = Promise.resolve();
+    act(() => { planning = result.current.plan(valid); });
+    act(() => result.current.reset());
+    await act(async () => {
+      resolve(sampleTrip);
+      await planning;
+    });
+    expect(result.current.mode).toBe("form");
+    expect(result.current.trip).toBeNull();
+    expect(window.location.pathname).toBe("/");
+    expect(result.current.pending).toBe(false);
+  });
+
+  it("goes back to the results and restores the trip's values after an abandoned edit", () => {
+    const { result } = renderHook(() => usePlanner(sampleTrip));
+    act(() => result.current.edit());
+    act(() => result.current.setValues({ ...result.current.values, pickup: { label: "Dallas, TX" } }));
+    act(() => result.current.cancelEdit());
+    expect(result.current.mode).toBe("results");
+    expect(result.current.trip).toBe(sampleTrip);
+    expect(result.current.values.pickup.label).toBe("St. Louis, MO");
+  });
 });

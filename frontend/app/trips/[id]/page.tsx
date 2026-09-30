@@ -18,5 +18,5 @@ export default async function TripPage({ params }: PageProps<"/trips/[id]">) {
   const { id } = await params;
   const trip = await fetchTrip(id);
   if (!trip) notFound();
-  return <Workspace initialTrip={trip} />;
+  return <Workspace key={trip.id} initialTrip={trip} />;
 }

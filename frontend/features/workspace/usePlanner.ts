@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   EMPTY_FORM,
   type FormErrors,
@@ -28,21 +28,33 @@ export function usePlanner(initialTrip: Trip | null) {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
 
+  const requestRef = useRef(0);
+
+  useEffect(
+    () => () => {
+      requestRef.current++;
+    },
+    [],
+  );
+
   const plan = useCallback(async (next: TripFormValues) => {
     setValuesState(next);
     const clientErrors = validate(next);
     setErrors(clientErrors);
     if (Object.keys(clientErrors).length > 0) return;
 
+    const request = ++requestRef.current;
     setPending(true);
     setNotice(null);
     try {
       const planned = await api.planTrip(toRequest(next));
+      if (request !== requestRef.current) return;
       setTrip(planned);
       setMode("results");
       setSelectedStopId(null);
       window.history.replaceState(null, "", `/trips/${planned.id}`);
     } catch (error) {
+      if (request !== requestRef.current) return;
       if (error instanceof ApiError) {
         const fieldErrors = mapApiErrors(error.fieldErrors());
         if (Object.keys(fieldErrors).length > 0) {
@@ -57,7 +69,7 @@ export function usePlanner(initialTrip: Trip | null) {
         setNotice({ message: "Something went wrong. Please try again.", retry: true });
       }
     } finally {
-      setPending(false);
+      if (request === requestRef.current) setPending(false);
     }
   }, []);
 
@@ -74,6 +86,8 @@ export function usePlanner(initialTrip: Trip | null) {
   };
 
   const reset = useCallback(() => {
+    requestRef.current++;
+    setPending(false);
     setTrip(null);
     setValuesState(EMPTY_FORM);
     setErrors({});
@@ -98,6 +112,12 @@ export function usePlanner(initialTrip: Trip | null) {
     plan,
     retry: () => plan(values),
     edit: () => setMode("form"),
+    cancelEdit: () => {
+      if (!trip) return;
+      setMode("results");
+      setValuesState(fromTrip(trip));
+      setErrors({});
+    },
     reset,
     selectStop,
     setValues,
