@@ -26,6 +26,8 @@ from .serializers import DEFAULT_LOG_DETAILS
 LOCATION_FIELDS = ("current_location", "pickup_location", "dropoff_location")
 SAME_POINT_MILES = 0.1
 WAYPOINT_MILES = 0.05
+# Straight-line; beyond this one ORS request can pass its 6,000 km cap.
+SINGLE_REQUEST_MAX_MILES = 3000
 
 
 def plan_and_save(data: dict, *, now: datetime | None = None) -> Trip:
@@ -88,8 +90,12 @@ def plan_and_save(data: dict, *, now: datetime | None = None) -> Trip:
     )
 
 
+def _straight_miles(a: Place, b: Place) -> float:
+    return haversine_mi((a.lng, a.lat), (b.lng, b.lat))
+
+
 def _same_point(a: Place, b: Place) -> bool:
-    return haversine_mi((a.lng, a.lat), (b.lng, b.lat)) < SAME_POINT_MILES
+    return _straight_miles(a, b) < SAME_POINT_MILES
 
 
 def _route(current: Place, pickup: Place, dropoff: Place) -> Route:
@@ -100,7 +106,25 @@ def _route(current: Place, pickup: Place, dropoff: Place) -> Route:
             coordinates=tail.coordinates,
             waypoints=(0, *tail.waypoints),
         )
+    if (
+        _straight_miles(current, pickup) + _straight_miles(pickup, dropoff)
+        > SINGLE_REQUEST_MAX_MILES
+    ):
+        return _join(
+            geo.get_route([(current.lat, current.lng), (pickup.lat, pickup.lng)]),
+            geo.get_route([(pickup.lat, pickup.lng), (dropoff.lat, dropoff.lng)]),
+        )
     return geo.get_route([(p.lat, p.lng) for p in (current, pickup, dropoff)])
+
+
+def _join(first: Route, second: Route) -> Route:
+    """Concatenate two single-leg routes that meet at the pickup."""
+    offset = len(first.coordinates) - 1
+    return Route(
+        legs=(*first.legs, *second.legs),
+        coordinates=(*first.coordinates, *second.coordinates[1:]),
+        waypoints=(*first.waypoints, *(w + offset for w in second.waypoints[1:])),
+    )
 
 
 def _place_namer(
