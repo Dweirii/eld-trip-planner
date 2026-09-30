@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { StopIcon } from "@/components/StopIcon";
 import type { Stop } from "@/lib/api/types";
 import { clockTime, duration, isoDate, miles, shortDate } from "@/lib/format";
 import { STATUS_NAMES, STOP_STYLE } from "@/lib/stops";
@@ -43,20 +44,12 @@ export function Itinerary({ stops, selectedStopId, onSelectStop }: ItineraryProp
                     aria-pressed={selected}
                     onClick={() => onSelectStop(stop.id)}
                     className={clsx(
-                      "grid w-full grid-cols-[40px_12px_1fr] items-start gap-2 rounded-lg px-2 py-1.5 text-left text-[12px] transition",
+                      "grid w-full grid-cols-[40px_14px_1fr] items-start gap-2 rounded-lg px-2 py-1.5 text-left text-[12px] transition",
                       selected ? "bg-[#e6f3f3] shadow-[inset_3px_0_0_var(--color-teal)]" : "hover:bg-surface",
                     )}
                   >
                     <span className="tabular-nums text-muted">{clockTime(stop.starts_at)}</span>
-                    <span
-                      aria-hidden="true"
-                      className={clsx(
-                        "mt-0.5 h-3 w-3 border-2 border-white shadow-[0_0_0_1px_#cfdede]",
-                        style.shape === "square" || style.shape === "diamond" ? "rounded-[3px]" : "rounded-full",
-                        style.shape === "diamond" && "rotate-45",
-                      )}
-                      style={{ background: style.shape === "ring" ? "#fff" : style.color }}
-                    />
+                    <StopIcon kind={stop.kind} className="mt-px" />
                     <span>
                       <b>{style.label}</b> · {stop.place}
                       <span className="block text-[11px] text-muted">{details(stop)}</span>

@@ -21,6 +21,19 @@ describe("Itinerary", () => {
     expect(screen.getByRole("heading", { level: 3, name: "Fri, Oct 2" })).toBeInTheDocument();
   });
 
+  it("marks each stop with its kind's shape, the start as a deep-teal ring", () => {
+    render(<Itinerary stops={sampleTrip.stops} selectedStopId={null} onSelectStop={vi.fn()} />);
+    const shapeOf = (name: RegExp) =>
+      screen.getByRole("button", { name }).querySelector("svg[data-shape]")?.getAttribute("data-shape");
+    expect(shapeOf(/Depart · Chicago/)).toBe("ring");
+    expect(shapeOf(/Pickup · St. Louis/)).toBe("circle");
+    expect(shapeOf(/10-h rest/)).toBe("pill");
+    expect(shapeOf(/Dropoff · Dallas/)).toBe("square");
+    const ring = screen.getByRole("button", { name: /Depart · Chicago/ }).querySelectorAll("svg path")[1];
+    expect(ring).toHaveAttribute("stroke", "#043b4b");
+    expect(ring).toHaveAttribute("fill", "#fff");
+  });
+
   it("selects a stop", async () => {
     const onSelectStop = vi.fn();
     render(<Itinerary stops={sampleTrip.stops} selectedStopId="s5" onSelectStop={onSelectStop} />);

@@ -52,34 +52,33 @@ body {
   }
 }
 
-/* Map stop markers: the outer element is positioned by MapLibre; the inner span carries the shape. */
+/* Map stop markers: MapLibre positions the element (absolute); the SVG icon comes from lib/stops.ts. */
 .stop-marker {
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
   cursor: pointer;
 }
-.stop-marker > span {
+.stop-marker > svg {
+  /* Positioned so it paints above the selection halo. */
+  position: relative;
   display: block;
-  width: 16px;
-  height: 16px;
-  border: 3px solid #fff;
-  border-radius: 9999px;
-  background: var(--marker-color);
-  box-shadow: 0 1px 4px rgb(4 59 75 / 0.35);
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 1px 2px rgb(4 59 75 / 0.45));
   transition: scale 150ms ease;
 }
-.stop-marker[data-shape="square"] > span {
-  border-radius: 4px;
+/* Selected: bigger, on a soft teal halo. */
+.stop-marker.is-selected::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 9999px;
+  background: rgb(0 128 128 / 0.25);
 }
-.stop-marker[data-shape="diamond"] > span {
-  border-radius: 3px;
-  rotate: 45deg;
-}
-.stop-marker[data-shape="ring"] > span {
-  background: #fff;
-  border-color: var(--marker-color);
-}
-.stop-marker.is-selected > span {
+.stop-marker.is-selected > svg {
   scale: 1.35;
-  box-shadow: 0 0 0 5px rgb(0 128 128 / 0.25), 0 1px 4px rgb(4 59 75 / 0.35);
 }
 
 /* The paper log sheet: faint ruled lines like a real form. */
@@ -106,6 +105,9 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .stop-marker > svg {
+    transition: none;
+  }
   .animate-draw-route {
     animation: none;
     stroke-dasharray: none;

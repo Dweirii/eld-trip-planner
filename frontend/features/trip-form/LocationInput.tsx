@@ -2,6 +2,7 @@
 
 import clsx from "clsx";
 import { type KeyboardEvent, useEffect, useId, useState } from "react";
+import { StopIcon } from "@/components/StopIcon";
 import { api } from "@/lib/api/client";
 import type { Place } from "@/lib/api/types";
 import type { LocationValue } from "./model";
@@ -13,7 +14,8 @@ export interface LocationInputProps {
   label: string;
   value: LocationValue;
   onChange: (value: LocationValue) => void;
-  marker: "start" | "stop";
+  /** The map marker this place becomes (same shape and colour). */
+  marker: "start" | "pickup" | "dropoff";
   error?: string;
   placeholder?: string;
   allowMyLocation?: boolean;
@@ -140,13 +142,7 @@ export function LocationInput({
           message ? "border-coral-ink" : "border-line",
         )}
       >
-        <span
-          aria-hidden="true"
-          className={clsx(
-            "h-2.5 w-2.5 shrink-0 rounded-full",
-            marker === "start" ? "border-[3px] border-brand bg-white" : "bg-coral",
-          )}
-        />
+        <StopIcon kind={marker} size={13} className="shrink-0" />
         <input
           id={inputId}
           role="combobox"

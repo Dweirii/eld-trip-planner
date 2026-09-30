@@ -28,6 +28,18 @@ describe("TripForm", () => {
     expect(screen.getByText("57.5 h")).toBeInTheDocument(); // left of 70
   });
 
+  it("marks the three places with the same shapes as their map markers", () => {
+    setup();
+    const shapeOf = (name: string) =>
+      screen
+        .getByRole("combobox", { name })
+        .parentElement?.querySelector("svg[data-shape]")
+        ?.getAttribute("data-shape");
+    expect(shapeOf("Current location")).toBe("ring");
+    expect(shapeOf("Pickup location")).toBe("circle");
+    expect(shapeOf("Dropoff location")).toBe("square");
+  });
+
   it("reports cycle hours as numbers", () => {
     const props = setup();
     fireEvent.change(screen.getByRole("spinbutton", { name: "Hours used" }), { target: { value: "31.25" } });

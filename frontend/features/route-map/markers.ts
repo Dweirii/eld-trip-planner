@@ -1,18 +1,35 @@
 /** DOM for map markers and popups. Text only (place names come from users and data files). */
 import type { Stop, StopKind } from "@/lib/api/types";
 import { clockTime, duration, isoDate, miles, shortDate } from "@/lib/format";
-import { STATUS_NAMES, STOP_STYLE } from "@/lib/stops";
+import { ICON_VIEWBOX, STATUS_NAMES, STOP_STYLE, stopIconLayers } from "@/lib/stops";
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+/** A focusable marker drawing the same icon as <StopIcon> (built with DOM APIs, never HTML strings). */
 export function createMarkerElement(kind: StopKind, label: string): HTMLDivElement {
   const element = document.createElement("div");
   element.className = "stop-marker";
+  element.dataset.kind = kind;
   element.dataset.shape = STOP_STYLE[kind].shape;
-  element.style.setProperty("--marker-color", STOP_STYLE[kind].color);
   element.setAttribute("role", "button");
   element.setAttribute("tabindex", "0");
   element.setAttribute("aria-label", label);
   element.title = label;
-  element.append(document.createElement("span"));
+
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", ICON_VIEWBOX);
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  for (const layer of stopIconLayers(kind)) {
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", layer.d);
+    path.setAttribute("fill", layer.fill);
+    if (layer.stroke) path.setAttribute("stroke", layer.stroke);
+    if (layer.strokeWidth) path.setAttribute("stroke-width", String(layer.strokeWidth));
+    path.setAttribute("stroke-linejoin", "round");
+    svg.append(path);
+  }
+  element.append(svg);
   return element;
 }
 

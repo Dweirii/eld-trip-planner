@@ -18,7 +18,7 @@ function Harness({
   return (
     <LocationInput
       label="Pickup location"
-      marker="stop"
+      marker="pickup"
       value={value}
       onChange={(next) => {
         setValue(next);

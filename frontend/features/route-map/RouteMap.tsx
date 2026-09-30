@@ -2,11 +2,11 @@
 
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PreviewPoint } from "@/features/trip-form/model";
-import type { Stop, StopKind, Trip } from "@/lib/api/types";
-import { STOP_STYLE } from "@/lib/stops";
+import type { Stop, Trip } from "@/lib/api/types";
 import { boundsOf, type LngLat } from "./bounds";
+import { MapLegend } from "./MapLegend";
 import { createMarkerElement, popupContent, stopPopupLines, stopTitle } from "./markers";
 
 const WORKER_URL = "/maplibre/maplibre-gl-worker.mjs";
@@ -186,29 +186,5 @@ export default function RouteMap({ trip, preview, selectedStopId, onSelectStop }
       <div ref={containerRef} className="h-full w-full" role="region" aria-label="Route map" />
       <MapLegend />
     </div>
-  );
-}
-
-const LEGEND: StopKind[] = ["start", "pickup", "dropoff", "fuel", "break", "rest", "restart"];
-
-function MapLegend() {
-  return (
-    <ul
-      aria-label="Map legend"
-      className="pointer-events-none absolute bottom-9 right-3 hidden gap-1 rounded-xl bg-white/95 p-2.5 text-[10.5px] text-text shadow-md lg:grid"
-    >
-      {LEGEND.map((kind) => (
-        <li key={kind} className="flex items-center gap-2">
-          <span
-            className="stop-marker"
-            data-shape={STOP_STYLE[kind].shape}
-            style={{ "--marker-color": STOP_STYLE[kind].color } as CSSProperties}
-          >
-            <span className="h-2.5! w-2.5! border-2!" />
-          </span>
-          {STOP_STYLE[kind].label}
-        </li>
-      ))}
-    </ul>
   );
 }

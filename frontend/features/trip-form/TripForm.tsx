@@ -46,14 +46,14 @@ export function TripForm({ values, errors, pending, onChange, onSubmit, onExampl
         />
         <LocationInput
           label="Pickup location"
-          marker="stop"
+          marker="pickup"
           value={values.pickup}
           onChange={setLocation("pickup")}
           error={errors.pickup}
         />
         <LocationInput
           label="Dropoff location"
-          marker="stop"
+          marker="dropoff"
           value={values.dropoff}
           onChange={setLocation("dropoff")}
           error={errors.dropoff}
