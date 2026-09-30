@@ -1,6 +1,8 @@
 from datetime import datetime
 from decimal import Decimal
 
+import pytest
+
 from trips.serializers import TripRequestSerializer
 
 VALID = {
@@ -32,6 +34,36 @@ def test_start_time_is_parsed_as_naive_local_time():
 def test_bad_start_time_format_is_rejected():
     ok, serializer = validate(start_time="10/01/2026 6am")
     assert not ok and "start_time" in serializer.errors
+
+
+def test_far_future_start_time_is_rejected():
+    ok, serializer = validate(start_time="9999-12-31T23:50")
+    assert not ok
+    assert serializer.errors["start_time"] == [
+        "Start time must be between the years 2000 and 2100."
+    ]
+
+
+@pytest.mark.parametrize(
+    ("label", "lat", "lng"),
+    [
+        ("Calgary, AB", 51.05, -114.07),  # north of the box (Toronto, at 43.65 N, is inside it)
+        ("Mexico City", 19.43, -99.13),  # south
+        ("Honolulu, HI", 21.31, -157.86),  # west
+    ],
+)
+def test_coordinates_outside_the_contiguous_us_are_rejected(label, lat, lng):
+    ok, serializer = validate(current_location={"label": label, "lat": lat, "lng": lng})
+    assert not ok
+    assert serializer.errors["current_location"]["non_field_errors"] == [
+        "Locations must be in the contiguous United States."
+    ]
+
+
+def test_coordinates_inside_the_contiguous_us_are_accepted():
+    ok, serializer = validate(pickup_location={"label": "Denver, CO", "lat": 39.74, "lng": -104.99})
+    assert ok, serializer.errors
+    assert serializer.validated_data["pickup_location"]["lat"] == 39.74
 
 
 def test_cycle_hours_must_be_between_0_and_70():

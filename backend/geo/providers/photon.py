@@ -6,7 +6,8 @@ from django.conf import settings
 from ..errors import UpstreamUnavailable
 from ..types import Place
 
-US_BBOX = "-125.0,24.3,-66.9,49.4"  # contiguous United States
+US_BOUNDS = (-125.0, 24.3, -66.9, 49.4)  # contiguous United States: west, south, east, north
+US_BBOX = ",".join(str(edge) for edge in US_BOUNDS)
 
 US_STATES = {
     "Alabama": "AL", "Arizona": "AZ", "Arkansas": "AR", "California": "CA", "Colorado": "CO",

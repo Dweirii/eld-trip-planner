@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
+from geo.providers.photon import US_BOUNDS
 from geo.serializers import PlaceSerializer
 from hos.models import DutyStatus
 
@@ -35,6 +36,12 @@ class LocationInputSerializer(serializers.Serializer):
     def validate(self, attrs: dict) -> dict:
         if ("lat" in attrs) != ("lng" in attrs):
             raise serializers.ValidationError("Provide both lat and lng, or neither.")
+        if "lat" in attrs:
+            west, south, east, north = US_BOUNDS
+            if not (south <= attrs["lat"] <= north and west <= attrs["lng"] <= east):
+                raise serializers.ValidationError(
+                    "Locations must be in the contiguous United States."
+                )
         return attrs
 
 
@@ -64,9 +71,12 @@ class TripRequestSerializer(serializers.Serializer):
 
     def validate_start_time(self, value: str) -> datetime:
         try:
-            return datetime.strptime(value, START_TIME_FORMAT)
+            parsed = datetime.strptime(value, START_TIME_FORMAT)
         except ValueError as exc:
             raise serializers.ValidationError("Use the format YYYY-MM-DDTHH:MM.") from exc
+        if not 2000 <= parsed.year <= 2100:
+            raise serializers.ValidationError("Start time must be between the years 2000 and 2100.")
+        return parsed
 
 
 # ── Response ─────────────────────────────────────────────────────────────
