@@ -88,15 +88,28 @@ def _rdp(coords: Sequence[LngLat], tolerance: float) -> list[LngLat]:
     return [c for c, k in zip(coords, keep, strict=False) if k]
 
 
+def _thin_uniformly(coords: Sequence[LngLat], limit: int) -> list[LngLat]:
+    """Evenly spaced subset of at most ``limit`` points, keeping both ends."""
+    if len(coords) <= limit:
+        return list(coords)
+    last = len(coords) - 1
+    return [coords[round(i * last / (limit - 1))] for i in range(limit)]
+
+
 def simplify(
     coords: Sequence[LngLat], max_points: int = 1500, tolerance: float = 0.0005
 ) -> list[LngLat]:
-    """Ramer–Douglas–Peucker, loosening the tolerance until at most ``max_points`` remain."""
+    """Ramer–Douglas–Peucker for display, with bounded cost.
+
+    Very dense or adversarial lines are first thinned uniformly to at most 4 × max_points;
+    after one RDP pass the result is thinned uniformly to at most max_points.
+    First and last points are always kept.
+    """
+    if max_points < 2:
+        raise ValueError("max_points must be at least 2")
     coords = list(coords)
     if len(coords) <= 2:
         return coords
+    coords = _thin_uniformly(coords, 4 * max_points)
     result = _rdp(coords, tolerance)
-    while len(result) > max_points:
-        tolerance *= 2
-        result = _rdp(coords, tolerance)
-    return result
+    return _thin_uniformly(result, max_points)

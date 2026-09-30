@@ -62,3 +62,18 @@ def test_simplify_collapses_a_straight_line_and_keeps_corners():
 def test_simplify_respects_max_points():
     zigzag = [(i / 100, (i % 2) * 0.01) for i in range(4000)]
     assert len(simplify(zigzag, max_points=300)) <= 300
+
+
+def test_simplify_rejects_fewer_than_two_points():
+    """max_points < 2 should raise ValueError."""
+    line = [(0.0, 0.0), (1.0, 0.0), (2.0, 0.0)]
+    with pytest.raises(ValueError):
+        simplify(line, max_points=1)
+
+
+def test_simplify_keeps_both_ends_when_thinning():
+    """Both first and last points must be preserved after simplification."""
+    zigzag = [(i / 100, (i % 2) * 0.01) for i in range(4000)]
+    result = simplify(zigzag, max_points=300)
+    assert result[0] == zigzag[0]
+    assert result[-1] == zigzag[-1]
