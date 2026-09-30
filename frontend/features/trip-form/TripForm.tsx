@@ -64,7 +64,7 @@ export function TripForm({ values, errors, pending, onChange, onSubmit, onExampl
         onChange={(cycleUsed) => onChange({ ...values, cycleUsed })}
         error={errors.cycleUsed}
       />
-      <DetailsSection values={values} onChange={onChange} error={errors.startTime} />
+      <DetailsSection values={values} onChange={onChange} errors={errors} />
       <button
         type="submit"
         disabled={pending}

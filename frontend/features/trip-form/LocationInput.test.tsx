@@ -8,6 +8,7 @@ import type { LocationValue } from "./model";
 
 const CHICAGO: Place = { label: "Chicago, IL", lat: 41.8781, lng: -87.6298 };
 const HEIGHTS: Place = { label: "Chicago Heights, IL", lat: 41.506, lng: -87.6356 };
+const DALLAS: Place = { label: "Dallas, TX", lat: 32.7767, lng: -96.797 };
 
 function Harness({
   initial = { label: "" },
@@ -95,6 +96,65 @@ describe("LocationInput", () => {
     await act(async () => pending.chic.resolve([CHICAGO]));
     await act(async () => pending.chi.resolve([{ label: "Chimayo, NM", lat: 36, lng: -106 }]));
     expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["Chicago, IL"]);
+  });
+
+  it("never reopens the list with results that arrive after the user left the field", async () => {
+    let finish: (places: Place[]) => void = () => undefined;
+    let signal: AbortSignal | undefined;
+    const search = vi.fn((_query: string, abort: AbortSignal) => {
+      signal = abort;
+      return new Promise<Place[]>((resolve) => {
+        finish = resolve;
+      });
+    });
+    render(
+      <>
+        <Harness search={search} />
+        <input aria-label="Next field" />
+      </>,
+    );
+    await user().type(screen.getByRole("combobox"), "Dal");
+    await settle();
+    expect(search).toHaveBeenCalledOnce();
+
+    await user().tab();
+    expect(screen.getByRole("textbox", { name: "Next field" })).toHaveFocus();
+    expect(signal?.aborted).toBe(true);
+    await act(async () => finish([DALLAS]));
+    await settle();
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("cancels a debounced search when the user leaves the field first", async () => {
+    const search = vi.fn().mockResolvedValue([DALLAS]);
+    render(
+      <>
+        <Harness search={search} />
+        <input aria-label="Next field" />
+      </>,
+    );
+    await user().type(screen.getByRole("combobox"), "Dal");
+    await user().tab();
+    await settle();
+    expect(search).not.toHaveBeenCalled();
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [1, "Location permission was denied."],
+    [2, "Your location isn't available right now."],
+    [3, "Finding your location timed out."],
+  ])("explains why the location failed (error code %i)", async (code, message) => {
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: (_success: PositionCallback, failure: PositionErrorCallback) =>
+          failure({ code, message: "", PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 } as GeolocationPositionError),
+      },
+    });
+    render(<Harness allowMyLocation />);
+    await user().click(screen.getByRole("button", { name: "Use my location" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(message);
   });
 
   it("uses the browser's coordinates with the nearest town's name", async () => {

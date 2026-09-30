@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { type KeyboardEvent, useEffect, useId, useState } from "react";
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { StopIcon } from "@/components/StopIcon";
 import { api } from "@/lib/api/client";
 import type { Place } from "@/lib/api/types";
@@ -9,6 +9,13 @@ import type { LocationValue } from "./model";
 
 const MIN_QUERY = 3;
 const DEBOUNCE_MS = 300;
+
+/** GeolocationPositionError codes → what went wrong, in plain words. */
+const GEOLOCATION_ERRORS: Record<number, string> = {
+  1: "Location permission was denied.",
+  2: "Your location isn't available right now.",
+  3: "Finding your location timed out.",
+};
 
 export interface LocationInputProps {
   label: string;
@@ -38,6 +45,7 @@ export function LocationInput({
   const inputId = useId();
   const listId = useId();
   const messageId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState<string | null>(null);
   const [options, setOptions] = useState<Place[]>([]);
   const [open, setOpen] = useState(false);
@@ -52,9 +60,11 @@ export function LocationInput({
       setStatus("loading");
       search(query.trim(), controller.signal)
         .then((places) => {
+          if (controller.signal.aborted) return;
           setOptions(places);
           setActive(places.length ? 0 : -1);
-          setOpen(places.length > 0);
+          // Suggestions never pop open over another field.
+          setOpen(places.length > 0 && document.activeElement === inputRef.current);
           setStatus(places.length ? "idle" : "empty");
         })
         .catch((reason: unknown) => {
@@ -122,9 +132,9 @@ export function LocationInput({
             setLocalError("We couldn't find a US town near you.");
           });
       },
-      () => {
+      (failure) => {
         setStatus("idle");
-        setLocalError("Location permission was denied.");
+        setLocalError(GEOLOCATION_ERRORS[failure.code] ?? GEOLOCATION_ERRORS[2]);
       },
       { timeout: 10_000 },
     );
@@ -144,6 +154,7 @@ export function LocationInput({
       >
         <StopIcon kind={marker} size={13} className="shrink-0" />
         <input
+          ref={inputRef}
           id={inputId}
           role="combobox"
           aria-expanded={open}
@@ -157,7 +168,12 @@ export function LocationInput({
           placeholder={placeholder ?? label}
           onChange={(event) => type(event.target.value)}
           onKeyDown={onKeyDown}
-          onBlur={() => setOpen(false)}
+          onBlur={() => {
+            // Leaving the field cancels the pending search (clearing the query aborts it).
+            setOpen(false);
+            setQuery(null);
+            setStatus((current) => (current === "loading" ? "idle" : current));
+          }}
           onFocus={() => {
             if (options.length > 0) setOpen(true);
           }}

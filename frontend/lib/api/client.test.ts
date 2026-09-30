@@ -63,6 +63,23 @@ describe("api client", () => {
     });
   });
 
+  it("keeps nested serializer errors on their own field", async () => {
+    vi.stubGlobal(
+      "fetch",
+      respond(400, {
+        error: {
+          code: "validation_error",
+          message: "Some fields are invalid.",
+          details: { log_details: { truck_number: ["Ensure this field has no more than 40 characters."] } },
+        },
+      }),
+    );
+    const error = (await api.planTrip({} as never).catch((e: unknown) => e)) as ApiError;
+    expect(error.fieldErrors()).toEqual({
+      "log_details.truck_number": "Ensure this field has no more than 40 characters.",
+    });
+  });
+
   it("reports network failures as a retryable error", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
     const error = await api.health().catch((e: unknown) => e);

@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   EMPTY_FORM,
+  type FormErrorKey,
   type FormErrors,
+  type LogDetailKey,
   type TripFormValues,
   fromTrip,
   mapApiErrors,
@@ -77,8 +79,10 @@ export function usePlanner(initialTrip: Trip | null) {
   const setValues = (next: TripFormValues) => {
     setErrors((current) => {
       const remaining = { ...current };
-      for (const key of Object.keys(current) as (keyof TripFormValues)[]) {
-        if (next[key] !== values[key]) delete remaining[key];
+      for (const key of Object.keys(current) as FormErrorKey[]) {
+        const [field, detail] = key.split(".") as [keyof TripFormValues, LogDetailKey | undefined];
+        const changed = detail ? next.details[detail] !== values.details[detail] : next[field] !== values[field];
+        if (changed) delete remaining[key];
       }
       return remaining;
     });

@@ -13,18 +13,31 @@ export class ApiError extends Error {
     this.name = "ApiError";
   }
 
-  /** One message per request field, from `field` and from DRF validation `details`. */
+  /**
+   * One message per request field, from `field` and from DRF validation `details`. Nested
+   * serializers keep their path: {log_details: {truck_number: ["…"]}} → {"log_details.truck_number": "…"}.
+   */
   fieldErrors(): Record<string, string> {
     const errors: Record<string, string> = {};
     if (this.field) errors[this.field] = this.message;
-    if (this.details && typeof this.details === "object") {
+    if (this.details && typeof this.details === "object" && !Array.isArray(this.details)) {
       for (const [key, value] of Object.entries(this.details as Record<string, unknown>)) {
-        const message = firstMessage(value);
-        if (message) errors[key] = message;
+        collectErrors(errors, key, value);
       }
     }
     return errors;
   }
+}
+
+function collectErrors(errors: Record<string, string>, path: string, value: unknown) {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+      collectErrors(errors, key === "non_field_errors" ? path : `${path}.${key}`, nested);
+    }
+    return;
+  }
+  const message = firstMessage(value);
+  if (message && !(path in errors)) errors[path] = message;
 }
 
 function firstMessage(value: unknown): string | undefined {

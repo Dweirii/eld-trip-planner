@@ -8,19 +8,26 @@ export interface LocationValue {
   lng?: number;
 }
 
+/** Log-sheet header details; `max` mirrors LogDetailsSerializer in backend/trips/serializers.py. */
 export const LOG_DETAIL_FIELDS = [
-  { key: "driver_name", label: "Driver", placeholder: "Alex Driver" },
-  { key: "co_driver_name", label: "Co-driver", placeholder: "—" },
-  { key: "carrier_name", label: "Carrier", placeholder: "Milepost Freight Co." },
-  { key: "main_office_address", label: "Main office", placeholder: "Green Bay, WI" },
-  { key: "home_terminal_address", label: "Home terminal", placeholder: "Green Bay, WI" },
-  { key: "truck_number", label: "Truck", placeholder: "TRK 1042" },
-  { key: "trailer_number", label: "Trailer", placeholder: "TRL 88317" },
-  { key: "shipping_document", label: "Shipping document", placeholder: "BOL-000142" },
-  { key: "shipper_commodity", label: "Shipper & commodity", placeholder: "General freight" },
+  { key: "driver_name", label: "Driver", placeholder: "Alex Driver", max: 80 },
+  { key: "co_driver_name", label: "Co-driver", placeholder: "—", max: 80 },
+  { key: "carrier_name", label: "Carrier", placeholder: "Milepost Freight Co.", max: 120 },
+  { key: "main_office_address", label: "Main office", placeholder: "Green Bay, WI", max: 160 },
+  { key: "home_terminal_address", label: "Home terminal", placeholder: "Green Bay, WI", max: 160 },
+  { key: "truck_number", label: "Truck", placeholder: "TRK 1042", max: 40 },
+  { key: "trailer_number", label: "Trailer", placeholder: "TRL 88317", max: 40 },
+  { key: "shipping_document", label: "Shipping document", placeholder: "BOL-000142", max: 80 },
+  { key: "shipper_commodity", label: "Shipper & commodity", placeholder: "General freight", max: 160 },
 ] as const;
 
 export type LogDetailKey = (typeof LOG_DETAIL_FIELDS)[number]["key"];
+
+const DETAIL_KEYS: ReadonlySet<string> = new Set(LOG_DETAIL_FIELDS.map((field) => field.key));
+
+function isDetailKey(key: string): key is LogDetailKey {
+  return DETAIL_KEYS.has(key);
+}
 
 export interface TripFormValues {
   current: LocationValue;
@@ -32,7 +39,14 @@ export interface TripFormValues {
   details: Partial<Record<LogDetailKey, string>>;
 }
 
-export type FormErrors = Partial<Record<keyof TripFormValues, string>>;
+/** A form field, or one log-sheet detail ("details.truck_number"); "details" alone is for the section as a whole. */
+export type FormErrorKey = keyof TripFormValues | `details.${LogDetailKey}`;
+
+export type FormErrors = Partial<Record<FormErrorKey, string>>;
+
+export function detailErrorKey(key: LogDetailKey): FormErrorKey {
+  return `details.${key}`;
+}
 
 export const EMPTY_FORM: TripFormValues = {
   current: { label: "" },
@@ -58,7 +72,15 @@ const schema = z.object({
     .min(0, "Hours can't be negative.")
     .max(70, "The cycle limit is 70 hours."),
   startTime: z.string().regex(/^$|^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Pick a date and time."),
-  details: z.record(z.string(), z.string().max(160, "Keep it under 160 characters.").optional()),
+  details: z.object(
+    Object.fromEntries(
+      LOG_DETAIL_FIELDS.map(({ key, max }) => [
+        key,
+        // The API trims before it checks the length, and so does toRequest().
+        z.string().trim().max(max, `Use at most ${max} characters.`).optional(),
+      ]),
+    ),
+  ),
 });
 
 /** Client-side checks (the API re-validates everything). */
@@ -67,8 +89,12 @@ export function validate(values: TripFormValues): FormErrors {
   if (result.success) return {};
   const errors: FormErrors = {};
   for (const issue of result.error.issues) {
-    const field = issue.path[0] as keyof TripFormValues;
-    errors[field] ??= issue.message;
+    const [field, detail] = issue.path;
+    const key: FormErrorKey =
+      field === "details" && typeof detail === "string" && isDetailKey(detail)
+        ? detailErrorKey(detail)
+        : (field as keyof TripFormValues);
+    errors[key] ??= issue.message;
   }
   return errors;
 }
@@ -82,12 +108,18 @@ const API_FIELDS: Record<string, keyof TripFormValues> = {
   log_details: "details",
 };
 
-/** API field errors ({pickup_location: "…"}) → form field errors ({pickup: "…"}). */
+/**
+ * API field errors → form field errors: {pickup_location: "…"} → {pickup: "…"}, and nested ones
+ * {"log_details.truck_number": "…"} → {"details.truck_number": "…"}.
+ */
 export function mapApiErrors(fieldErrors: Record<string, string>): FormErrors {
   const errors: FormErrors = {};
   for (const [apiField, message] of Object.entries(fieldErrors)) {
-    const field = API_FIELDS[apiField];
-    if (field) errors[field] = message;
+    const [top, sub] = apiField.split(".", 2);
+    const field = API_FIELDS[top];
+    if (!field) continue;
+    const key = field === "details" && sub && isDetailKey(sub) ? detailErrorKey(sub) : field;
+    errors[key] ??= message;
   }
   return errors;
 }

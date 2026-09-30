@@ -1,8 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { EXAMPLE_TRIPS } from "./examples";
-import { EMPTY_FORM } from "./model";
+import { EMPTY_FORM, type TripFormValues, validate } from "./model";
 import { TripForm } from "./TripForm";
 
 function setup(overrides: Partial<Parameters<typeof TripForm>[0]> = {}) {
@@ -72,5 +72,40 @@ describe("TripForm", () => {
   it("opens the details section when the start time has an error", () => {
     setup({ errors: { startTime: "Pick a date and time." } });
     expect(screen.getByText("Pick a date and time.").closest("details")).toHaveAttribute("open");
+  });
+
+  it("shows an over-long truck number's error under that field, in an open details section", () => {
+    const values: TripFormValues = {
+      ...EXAMPLE_TRIPS[0].values,
+      details: { truck_number: "TRK-".repeat(11) },
+    };
+    setup({ values, errors: validate(values) });
+    const truck = screen.getByRole("textbox", { name: "Truck" });
+    expect(truck).toHaveAttribute("aria-invalid", "true");
+    expect(truck).toHaveAccessibleDescription("Use at most 40 characters.");
+    expect(truck.closest("details")).toHaveAttribute("open");
+  });
+
+  it("shows API errors for the log-sheet details", () => {
+    setup({
+      errors: {
+        "details.carrier_name": "Ensure this field has no more than 120 characters.",
+        details: "Log details are invalid.",
+      },
+    });
+    const details = screen.getByText("Log details are invalid.").closest("details")!;
+    expect(details).toHaveAttribute("open");
+    expect(within(details).getByRole("textbox", { name: "Carrier" })).toHaveAccessibleDescription(
+      "Ensure this field has no more than 120 characters.",
+    );
+  });
+
+  it("keeps the details section open once its error is fixed", () => {
+    const props = { values: EMPTY_FORM, pending: false, onChange: vi.fn(), onSubmit: vi.fn(), onExample: vi.fn() };
+    const { rerender } = render(<TripForm {...props} errors={{ startTime: "Pick a date and time." }} />);
+    const details = screen.getByText("Pick a date and time.").closest("details")!;
+    expect(details).toHaveAttribute("open");
+    rerender(<TripForm {...props} errors={{}} />);
+    expect(details).toHaveAttribute("open");
   });
 });

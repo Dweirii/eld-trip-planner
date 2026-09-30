@@ -28,6 +28,23 @@ describe("trip form model", () => {
     expect(validate({ ...filled, startTime: "2026-10-01T06:00" })).toEqual({});
   });
 
+  it("mirrors the API's per-field limits for the log-sheet details", () => {
+    const withDetails = (details: TripFormValues["details"]) => validate({ ...filled, details });
+    expect(withDetails({ truck_number: "T".repeat(40), carrier_name: "C".repeat(120), driver_name: "D".repeat(80) })).toEqual(
+      {},
+    );
+    expect(withDetails({ truck_number: "T".repeat(41) })).toEqual({ "details.truck_number": "Use at most 40 characters." });
+    expect(withDetails({ carrier_name: "C".repeat(121) })).toEqual({ "details.carrier_name": "Use at most 120 characters." });
+    expect(withDetails({ driver_name: "D".repeat(81) })).toEqual({ "details.driver_name": "Use at most 80 characters." });
+    expect(withDetails({ shipping_document: "S".repeat(81) })).toEqual({
+      "details.shipping_document": "Use at most 80 characters.",
+    });
+    expect(withDetails({ shipper_commodity: "S".repeat(160), trailer_number: ` ${"T".repeat(40)} ` })).toEqual({});
+    expect(withDetails({ main_office_address: "A".repeat(161) })).toEqual({
+      "details.main_office_address": "Use at most 160 characters.",
+    });
+  });
+
   it("builds the API request, sending coordinates only when both are known", () => {
     expect(
       toRequest({ ...filled, startTime: "2026-10-01T06:00", details: { driver_name: " Sam ", truck_number: " " } }),
@@ -47,6 +64,20 @@ describe("trip form model", () => {
     expect(
       mapApiErrors({ pickup_location: "Not found.", current_cycle_used_hours: "Too high.", other: "x" }),
     ).toEqual({ pickup: "Not found.", cycleUsed: "Too high." });
+  });
+
+  it("maps nested API errors onto the log-detail field they belong to", () => {
+    expect(
+      mapApiErrors({
+        "log_details.truck_number": "Ensure this field has no more than 40 characters.",
+        "log_details.unknown": "Odd.",
+        "current_location.lat": "A valid number is required.",
+      }),
+    ).toEqual({
+      "details.truck_number": "Ensure this field has no more than 40 characters.",
+      details: "Odd.",
+      current: "A valid number is required.",
+    });
   });
 
   it("restores a planned trip into the form for editing", () => {

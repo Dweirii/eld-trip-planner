@@ -47,6 +47,23 @@ describe("usePlanner", () => {
     expect(result.current.mode).toBe("form");
   });
 
+  it("puts API log-detail errors on the detail field and clears them when it changes", async () => {
+    planTrip.mockRejectedValue(
+      new ApiError(400, "validation_error", "Some fields are invalid.", undefined, {
+        log_details: { truck_number: ["Ensure this field has no more than 40 characters."] },
+      }),
+    );
+    const { result } = renderHook(() => usePlanner(null));
+    await act(() => result.current.plan(valid));
+    expect(result.current.errors).toEqual({
+      "details.truck_number": "Ensure this field has no more than 40 characters.",
+    });
+    expect(result.current.notice).toBeNull();
+
+    act(() => result.current.setValues({ ...result.current.values, details: { truck_number: "TRK 1" } }));
+    expect(result.current.errors).toEqual({});
+  });
+
   it("offers a retry when the routing service is down", async () => {
     planTrip.mockRejectedValue(new ApiError(503, "upstream_unavailable", "Try again."));
     const { result } = renderHook(() => usePlanner(null));
