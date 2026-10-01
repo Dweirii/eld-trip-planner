@@ -1,11 +1,12 @@
 "use client";
 
 import clsx from "clsx";
-import { useId, useState } from "react";
+import { type Ref, useId, useState } from "react";
 import { type TabItem, TabPanel, Tabs } from "@/components/ui/Tabs";
 import { Assumptions } from "@/features/compliance/Assumptions";
 import { RuleChecks } from "@/features/compliance/RuleChecks";
 import { Itinerary } from "@/features/itinerary/Itinerary";
+import { showDailyLogs } from "@/features/log-sheets/LogSheets";
 import type { Trip } from "@/lib/api/types";
 import { cityOf, clockTime, duration, isoDate, logHours, miles, minutesBetween, shortDate } from "@/lib/format";
 
@@ -17,9 +18,11 @@ export interface ResultsPanelProps {
   onSelectStop: (id: string) => void;
   onEdit: () => void;
   onNewTrip: () => void;
+  /** Focused by the workspace when the panel switches to these results. */
+  headingRef?: Ref<HTMLHeadingElement>;
 }
 
-export function ResultsPanel({ trip, selectedStopId, onSelectStop, onEdit, onNewTrip }: ResultsPanelProps) {
+export function ResultsPanel({ trip, selectedStopId, onSelectStop, onEdit, onNewTrip, headingRef }: ResultsPanelProps) {
   const [tab, setTab] = useState<Tab>("itinerary");
   const tabsId = useId();
   const { inputs, summary } = trip;
@@ -45,7 +48,9 @@ export function ResultsPanel({ trip, selectedStopId, onSelectStop, onEdit, onNew
     <div className="flex flex-col gap-3">
       <div className="flex items-start gap-2">
         <div className="flex-1">
-          <h2 className="text-[14px] font-extrabold leading-snug">{title}</h2>
+          <h2 ref={headingRef} tabIndex={-1} className="rounded-sm text-[14px] font-extrabold leading-snug">
+            {title}
+          </h2>
           <p className="text-[11px] text-muted">
             {`Cycle used ${logHours(inputs.current_cycle_used_hours)} h · starts ${shortDate(isoDate(summary.starts_at))}, ${clockTime(summary.starts_at)} ${trip.home_time_zone.abbreviation}`}
           </p>
@@ -69,6 +74,17 @@ export function ResultsPanel({ trip, selectedStopId, onSelectStop, onEdit, onNew
         <Stat label="log days" value={String(summary.days)} />
         <Stat label="door to door" value={duration(minutesBetween(summary.starts_at, summary.arrives_at))} />
       </dl>
+
+      <button
+        type="button"
+        onClick={showDailyLogs}
+        className="-mt-1 flex items-center justify-between rounded-xl border-[1.5px] border-[#cfe3e3] px-3 py-1.5 text-[12px] font-bold text-brand transition hover:bg-surface"
+      >
+        Daily logs
+        <span aria-hidden="true" className="text-teal">
+          ↓
+        </span>
+      </button>
 
       <Tabs
         idBase={tabsId}

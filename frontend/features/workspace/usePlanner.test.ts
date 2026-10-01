@@ -117,6 +117,26 @@ describe("usePlanner", () => {
     expect(result.current.pending).toBe(false);
   });
 
+  it("cancels a plan still in flight when the edit is abandoned", async () => {
+    let resolve: (trip: typeof sampleTrip) => void = () => undefined;
+    planTrip.mockReturnValue(new Promise((r) => { resolve = r; }));
+    const { result } = renderHook(() => usePlanner(sampleTrip));
+    act(() => result.current.edit());
+    let planning: Promise<void> = Promise.resolve();
+    act(() => { planning = result.current.plan(valid); });
+    expect(result.current.pending).toBe(true);
+
+    act(() => result.current.cancelEdit());
+    expect(result.current.pending).toBe(false);
+    await act(async () => {
+      resolve({ ...sampleTrip, id: "newer" });
+      await planning;
+    });
+    expect(result.current.mode).toBe("results");
+    expect(result.current.trip).toBe(sampleTrip);
+    expect(window.location.pathname).toBe("/");
+  });
+
   it("goes back to the results and restores the trip's values after an abandoned edit", () => {
     const { result } = renderHook(() => usePlanner(sampleTrip));
     act(() => result.current.edit());

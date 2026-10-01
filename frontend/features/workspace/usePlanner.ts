@@ -118,6 +118,9 @@ export function usePlanner(initialTrip: Trip | null) {
     edit: () => setMode("form"),
     cancelEdit: () => {
       if (!trip) return;
+      // Abandon any plan still in flight: its result must not replace the trip we go back to.
+      requestRef.current++;
+      setPending(false);
       setMode("results");
       setValuesState(fromTrip(trip));
       setErrors({});

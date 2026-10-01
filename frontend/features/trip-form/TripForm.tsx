@@ -1,5 +1,6 @@
 "use client";
 
+import type { Ref } from "react";
 import { CycleGauge } from "./CycleGauge";
 import { DetailsSection } from "./DetailsSection";
 import { ExampleChips } from "./ExampleChips";
@@ -13,9 +14,11 @@ export interface TripFormProps {
   onChange: (values: TripFormValues) => void;
   onSubmit: () => void;
   onExample: (values: TripFormValues) => void;
+  /** Focused by the workspace when the panel switches to the form. */
+  headingRef?: Ref<HTMLHeadingElement>;
 }
 
-export function TripForm({ values, errors, pending, onChange, onSubmit, onExample }: TripFormProps) {
+export function TripForm({ values, errors, pending, onChange, onSubmit, onExample, headingRef }: TripFormProps) {
   const setLocation = (key: "current" | "pickup" | "dropoff") => (value: LocationValue) =>
     onChange({ ...values, [key]: value });
 
@@ -29,7 +32,9 @@ export function TripForm({ values, errors, pending, onChange, onSubmit, onExampl
       className="flex flex-col gap-4"
     >
       <div>
-        <h2 className="text-[15px] font-extrabold">Plan a trip</h2>
+        <h2 ref={headingRef} tabIndex={-1} className="rounded-sm text-[15px] font-extrabold">
+          Plan a trip
+        </h2>
         <p className="mt-0.5 text-[12px] text-muted">
           Route, required stops and filled-in daily logs under FMCSA Hours-of-Service rules.
         </p>
