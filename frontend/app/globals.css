@@ -82,6 +82,79 @@ body {
   scale: 1.35;
 }
 
+/* Trip replay: the truck. MapLibre positions it; it takes no pointer events, so the stop under it stays clickable. */
+.truck-marker {
+  z-index: 2; /* above the stop markers */
+  width: 30px;
+  height: 30px;
+  pointer-events: none;
+}
+.truck-marker__body {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--color-brand);
+  box-shadow:
+    0 0 0 2.5px #fff,
+    0 4px 12px rgb(4 59 75 / 0.45);
+}
+.truck-marker__body > svg {
+  width: 19px;
+  height: 19px;
+  transition: scale 250ms ease;
+}
+.truck-marker[data-facing="left"] .truck-marker__body > svg {
+  scale: -1 1;
+}
+/* Driving: a soft teal halo breathes out from under the truck. */
+.truck-marker::before {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  border-radius: 9999px;
+  background: rgb(0 128 128 / 0.32);
+  opacity: 0;
+}
+.truck-marker[data-status="driving"]::before {
+  animation: truck-pulse 1.8s cubic-bezier(0.25, 0.6, 0.3, 1) infinite;
+}
+@keyframes truck-pulse {
+  from {
+    transform: scale(0.55);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+/* Stopped: a small badge in the duty status's colour (the same colours as the replay chip). */
+.truck-marker__badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  display: none;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff;
+  border-radius: 9999px;
+}
+.truck-marker:not([data-status="driving"]) .truck-marker__badge {
+  display: block;
+}
+.truck-marker[data-status="off_duty"] .truck-marker__badge {
+  background: var(--color-muted);
+}
+.truck-marker[data-status="sleeper_berth"] .truck-marker__badge {
+  background: var(--color-brand);
+}
+.truck-marker[data-status="on_duty"] .truck-marker__badge {
+  background: var(--color-coral-ink);
+}
+
 /*
  * Trip replay scrubber: the native range input stays on top for pointer, keyboard and assistive tech, but
  * invisible; the track and thumb drawn beneath it follow the exact time. Its thumb has the drawn thumb's
@@ -146,6 +219,14 @@ body {
   .animate-draw-route {
     animation: none;
     stroke-dasharray: none;
+  }
+  .truck-marker__body > svg {
+    transition: none;
+  }
+  .truck-marker[data-status="driving"]::before {
+    animation: none;
+    opacity: 0.6;
+    transform: scale(0.85);
   }
   .animate-bar-in {
     animation: none;

@@ -24,4 +24,12 @@ describe("MapLegend", () => {
     expect(list).toBeVisible();
     expect(within(list).getByText("34-h restart")).toBeInTheDocument();
   });
+
+  it("lifts the small-screen legend above the playback bar while a trip replays", () => {
+    const { rerender } = render(<MapLegend />);
+    const corner = () => screen.getByRole("button", { name: "Legend" }).parentElement!;
+    expect(corner()).toHaveClass("bottom-[calc(60%+0.75rem)]");
+    rerender(<MapLegend raised />);
+    expect(corner()).toHaveClass("bottom-[calc(60%+0.75rem+6.75rem)]");
+  });
 });
