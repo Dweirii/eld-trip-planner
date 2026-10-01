@@ -1,37 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Milepost web (frontend)
 
-## Getting Started
+The map workspace for Milepost: plan a truck trip under FMCSA Hours-of-Service rules, see the route and every required stop on a map, check each rule, and print filled-in Driver's Daily Logs. The Django API in `../backend` does the planning; this app is the UI.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Next.js 16** (App Router, Turbopack) with **React 19** and **TypeScript**
+- **Tailwind CSS 4** (design tokens in `app/globals.css` under `@theme`)
+- **MapLibre GL 6** with the OpenFreeMap *Positron* style
+- **zod** for client-side validation that mirrors the API
+- API types generated from `../backend/openapi.yaml` with **openapi-typescript**
+- **Vitest** + Testing Library (jsdom) for unit and component tests, **Playwright** for the end-to-end smoke test
+
+## Folder structure
+
+```
+app/                    routes: / (workspace), /trips/[id] (saved trip, fetched on the server),
+                        layout, error page, loading skeleton, not-found pages, globals.css
+features/
+  trip-form/            the form: LocationInput (autocomplete combobox), CycleGauge, DetailsSection,
+                        ExampleChips; model.ts (validation, API mapping, examples)
+  route-map/            RouteMap (MapLibre), stop markers and popups, MapLegend, bounds helpers
+  itinerary/            stops grouped by day
+  compliance/           RuleChecks (observed / limit per rule) and Assumptions
+  log-sheets/           LogSheet (the paper form as SVG), geometry.ts (grid math), linking.ts
+                        (brackets ↔ stops), miles.ts (daily miles), day tabs and print
+  workspace/            Workspace shell, ResultsPanel, usePlanner (all planner state), toast, overlay
+components/             TopBar, HowItWorks, StopIcon; components/ui/ holds shared primitives (Tabs)
+lib/
+  api/                  client.ts (browser calls via /api), server.ts (server-side trip fetch),
+                        types.ts (friendly names over the generated schema.d.ts)
+  format.ts             times, dates, hours and miles (times are read from the string, never converted)
+  stops.ts              stop names, colours and shapes shared by the map, legend, itinerary and form
+e2e/                    Playwright smoke test
+scripts/                copy-maplibre-worker.mjs
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Scripts
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Command | What it does |
+|---|---|
+| `pnpm dev` | Copy the MapLibre worker, then start the dev server on :3000 |
+| `pnpm build` | Copy the MapLibre worker, then build for production |
+| `pnpm test` | Unit and component tests (Vitest); no network |
+| `pnpm test:e2e` | Build, start on :3100 and run the Playwright smoke test (API calls are stubbed in the browser) |
+| `pnpm typecheck` | Generate Next's route types, then `tsc --noEmit` |
+| `pnpm lint` | ESLint (`eslint .`) |
+| `pnpm gen:api` | Regenerate `lib/api/schema.d.ts` from `../backend/openapi.yaml` |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment
 
-## Learn More
+Copy `.env.example` to `.env.local`.
 
-To learn more about Next.js, take a look at the following resources:
+- `API_BASE_URL`: where the Django API runs, e.g. `http://localhost:8000` (a trailing slash is fine). It is read at **build time**, for the `/api/*` rewrite in `next.config.ts` that keeps the browser on one origin, and at **run time**, when `/trips/[id]` is rendered on the server. On Vercel, set it for both. A Vercel build fails if it is missing, so a deploy can't silently proxy to localhost.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## The MapLibre worker copy step
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+MapLibre 6 starts a module worker (`maplibre-gl-worker.mjs`, which imports `maplibre-gl-shared.mjs`). Turbopack does not bundle or emit that worker. So `dev` and `build` first run `scripts/copy-maplibre-worker.mjs`, which copies both files into `public/maplibre/` (git-ignored), and `RouteMap` points `maplibregl.setWorkerUrl` at the copy. If the map stays blank, run `pnpm build` or `pnpm dev` once to create the copy.
 
-## Deploy on Vercel
+## Deliberate simplifications
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# eld-trip-planner
+- On small screens the planner panel is a **scrollable** bottom sheet, not a draggable one.
+- On small screens the log sheets **scroll sideways** at their natural size instead of scaling down, and there is no "open full size" view. Printing and the PDF always use the full-size sheet, one landscape Letter page per day.
+- While a trip is being planned, an **animated overlay** ("Planning under FMCSA rules…") stands in for skeleton panels and an animated dashed route. A saved trip opened by link shows a skeleton while it loads.
