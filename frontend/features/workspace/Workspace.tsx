@@ -5,6 +5,8 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef } from "react";
 import { LogSheets } from "@/features/log-sheets/LogSheets";
+import { PlaybackBar } from "@/features/replay/PlaybackBar";
+import { useTripReplay } from "@/features/replay/useTripReplay";
 import { type PreviewPoint, previewPoints } from "@/features/trip-form/model";
 import { TripForm } from "@/features/trip-form/TripForm";
 import { api } from "@/lib/api/client";
@@ -29,6 +31,8 @@ export function Workspace({ initialTrip = null }: { initialTrip?: Trip | null })
   const { current, pickup, dropoff } = values;
   const preview = useMemo(() => previewPoints(current, pickup, dropoff), [current, pickup, dropoff]);
   const showResults = mode === "results" && trip !== null;
+  // The replay belongs to the results on screen: Edit trip, New trip or a new plan start it over.
+  const replay = useTripReplay(showResults ? trip : null);
 
   useEffect(() => {
     // Wake the serverless API while the user fills in the form.
@@ -81,6 +85,9 @@ export function Workspace({ initialTrip = null }: { initialTrip?: Trip | null })
               onEdit={planner.edit}
               onNewTrip={reset}
               headingRef={headingRef}
+              currentStopId={replay.currentStopId}
+              drivingToStopId={replay.drivingToStopId}
+              followCurrent={replay.playing}
             />
           ) : (
             <>
@@ -110,13 +117,22 @@ export function Workspace({ initialTrip = null }: { initialTrip?: Trip | null })
           preview={showResults ? NO_PREVIEW : preview}
           selectedStopId={selectedStopId}
           onSelectStop={planner.selectStop}
+          replay={replay.truck}
         />
+        {showResults && <PlaybackBar replay={replay} />}
         <PlanningOverlay pending={planner.pending} />
         {planner.notice && (
           <NoticeToast notice={planner.notice} onRetry={() => void planner.retry()} onDismiss={planner.dismissNotice} />
         )}
       </section>
-      {showResults && <LogSheets trip={trip} selectedStopId={selectedStopId} onSelectStop={planner.selectStop} />}
+      {showResults && (
+        <LogSheets
+          trip={trip}
+          selectedStopId={selectedStopId}
+          onSelectStop={planner.selectStop}
+          playhead={replay.playhead}
+        />
+      )}
     </main>
   );
 }
