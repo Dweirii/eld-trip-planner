@@ -14,6 +14,12 @@ export function isoDate(iso: string): string {
   return iso.slice(0, 10);
 }
 
+/** "2026-10-31" plus 1 day → "2026-11-01" (calendar arithmetic in UTC, so the browser's zone never matters). */
+export function addDays(date: string, days: number): string {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
 /** "2026-10-01" → "Thu, Oct 1". */
 export function shortDate(date: string): string {
   const [year, month, day] = date.split("-").map(Number);

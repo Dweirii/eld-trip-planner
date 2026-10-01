@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  addDays,
   cityOf,
   clockTime,
   duration,
@@ -54,6 +55,16 @@ describe("format", () => {
     expect(minuteLabel(0)).toBe("00:00");
     expect(minuteLabel(645)).toBe("10:45");
     expect(minuteLabel(1440)).toBe("24:00");
+  });
+
+  it("adds calendar days to a date without the browser's time zone", () => {
+    vi.stubEnv("TZ", "Pacific/Auckland");
+    expect(addDays("2026-10-01", 0)).toBe("2026-10-01");
+    expect(addDays("2026-10-01", 1)).toBe("2026-10-02");
+    expect(addDays("2026-10-31", 1)).toBe("2026-11-01");
+    expect(addDays("2026-12-31", 2)).toBe("2027-01-02");
+    vi.stubEnv("TZ", "America/Los_Angeles");
+    expect(addDays("2026-11-01", 1)).toBe("2026-11-02"); // a DST change in the browser's zone
   });
 
   it("extracts the city from a place label", () => {
