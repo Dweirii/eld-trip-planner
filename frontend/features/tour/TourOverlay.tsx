@@ -17,7 +17,7 @@ export interface TourOverlayProps {
   /** Off: the card shrinks to a slim control pill, for a clean recording. */
   captions: boolean;
   target: TourTarget | null;
-  /** Desktop: lift the card above the trip replay's bar while it is open. */
+  /** Desktop: the trip replay's bar is open; the card moves to the top of the map, out of its way. */
   raised?: boolean;
   onPrevious: () => void;
   onToggle: () => void;
@@ -60,6 +60,7 @@ export function TourOverlay(props: TourOverlayProps) {
       else delete card.dataset.dodge;
     }
   }, []);
+
   const counter = (
     <p className="shrink-0 text-[11.5px] font-bold tabular-nums text-muted">
       <span aria-hidden="true">{`${index + 1} / ${total}`}</span>
@@ -73,7 +74,6 @@ export function TourOverlay(props: TourOverlayProps) {
       <section
         ref={cardRef}
         aria-label="Guided tour"
-        data-tour-card=""
         data-docked={raised || undefined}
         className={clsx(
           "animate-bar-in fixed inset-x-3 top-[3.75rem] z-[70] mx-auto transition-transform duration-[650ms] ease-[cubic-bezier(0.45,0,0.2,1)] motion-reduce:transition-none",
@@ -115,7 +115,9 @@ export function TourOverlay(props: TourOverlayProps) {
           <>
             <div className="flex items-center gap-1 pl-3">
               {counter}
-              {paused && <span className="ml-1.5 text-[11.5px] font-bold text-coral-ink">{PAUSED}</span>}
+              <span aria-live="polite" className="text-[11.5px] font-bold text-coral-ink">
+                {paused && <span className="ml-1.5">{PAUSED}</span>}
+              </span>
               <span aria-hidden="true" className="mx-1.5 h-4 w-px bg-line" />
               <Controls {...props} />
             </div>
