@@ -5,12 +5,13 @@ import { type Ref, useId, useState } from "react";
 import { type TabItem, TabPanel, Tabs } from "@/components/ui/Tabs";
 import { Assumptions } from "@/features/compliance/Assumptions";
 import { RuleChecks } from "@/features/compliance/RuleChecks";
+import { Directions } from "@/features/directions/Directions";
 import { Itinerary } from "@/features/itinerary/Itinerary";
 import { showDailyLogs } from "@/features/log-sheets/LogSheets";
 import type { Trip } from "@/lib/api/types";
 import { cityOf, clockTime, duration, isoDate, logHours, miles, minutesBetween, shortDate } from "@/lib/format";
 
-type Tab = "itinerary" | "rules" | "assumptions";
+type Tab = "itinerary" | "directions" | "rules" | "assumptions";
 
 export interface ResultsPanelProps {
   trip: Trip;
@@ -33,6 +34,7 @@ export function ResultsPanel({ trip, selectedStopId, onSelectStop, onEdit, onNew
   const allPassed = passed === trip.compliance.length;
   const tabs: TabItem<Tab>[] = [
     { id: "itinerary", label: "Itinerary" },
+    { id: "directions", label: "Directions" },
     {
       id: "rules",
       label: (
@@ -103,6 +105,9 @@ export function ResultsPanel({ trip, selectedStopId, onSelectStop, onEdit, onNew
 
       <TabPanel idBase={tabsId} id="itinerary" hidden={tab !== "itinerary"}>
         <Itinerary stops={trip.stops} selectedStopId={selectedStopId} onSelectStop={onSelectStop} />
+      </TabPanel>
+      <TabPanel idBase={tabsId} id="directions" hidden={tab !== "directions"}>
+        <Directions legs={trip.route.legs} />
       </TabPanel>
       <TabPanel idBase={tabsId} id="rules" hidden={tab !== "rules"}>
         <RuleChecks checks={trip.compliance} />

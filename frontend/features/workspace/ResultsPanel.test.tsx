@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { sampleTrip } from "@/lib/api/__fixtures__";
@@ -31,6 +31,29 @@ describe("ResultsPanel", () => {
     await userEvent.keyboard("{ArrowRight}");
     expect(screen.getByRole("tab", { name: "Assumptions" })).toHaveFocus();
     expect(screen.getByText(/Only driving is barred/)).toBeVisible();
+  });
+
+  it("offers itinerary, directions, rules and assumptions, in that order", () => {
+    setup();
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "Itinerary",
+      "Directions",
+      "Rules 7/7 ✓",
+      "Assumptions",
+    ]);
+  });
+
+  it("shows turn-by-turn directions per leg", async () => {
+    setup();
+    expect(screen.queryByRole("heading", { name: /Leg 1/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: "Directions" }));
+    const panel = screen.getByRole("tabpanel", { name: "Directions" });
+    expect(panel).toBeVisible();
+    expect(within(panel).getByRole("heading", { level: 3, name: "Leg 1 · Chicago, IL → St. Louis, MO" })).toBeVisible();
+    expect(within(panel).getByText("Continue onto I-30 W")).toBeVisible();
+    expect(screen.queryByRole("list", { name: "Itinerary" })).not.toBeInTheDocument();
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(screen.getByRole("tab", { name: "Itinerary" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("edits or starts over", async () => {

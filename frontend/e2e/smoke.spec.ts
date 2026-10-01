@@ -19,6 +19,9 @@ test("an example trip produces the itinerary, rule checks and daily logs", async
   const itinerary = page.getByRole("list", { name: "Itinerary" });
   await expect(itinerary.getByRole("button", { name: /10-h rest · Jasper, AR/ })).toBeVisible();
 
+  await page.getByRole("tab", { name: "Directions" }).click();
+  await expect(page.getByRole("heading", { name: /^Leg 1 · / })).toBeVisible();
+
   await page.getByRole("tab", { name: /Rules 7\/7/ }).click();
   await expect(page.getByText("11-hour driving limit")).toBeVisible();
 
