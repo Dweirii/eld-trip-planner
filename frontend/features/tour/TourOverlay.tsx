@@ -237,8 +237,9 @@ function IconButton({
 const MOVE_MS = 650;
 /** A target that vanishes for less than this (a re-render) keeps its ring. */
 const MISSING_GRACE_MS = 250;
-const PADDING = 8;
-const SMALL_PADDING = 12;
+const PADDING = 6;
+/** A map pin gets more room, so its ring reads as a ring. */
+const PIN_PADDING = 10;
 
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 
@@ -248,8 +249,8 @@ function lerp(from: number, to: number, progress: number) {
 
 /** The ring around a target: padded, with corners that follow its own (a pill or pin stays round). */
 function ringFor(box: Box, target: TourTarget): Box & { radius: number } {
-  const small = Math.min(box.width, box.height) < 40;
-  const pad = small ? SMALL_PADDING : PADDING;
+  const pin = Math.max(box.width, box.height) < 40;
+  const pad = pin ? PIN_PADDING : PADDING;
   const ring = { top: box.top - pad, left: box.left - pad, width: box.width + 2 * pad, height: box.height + 2 * pad };
   const elements = targetElements(target).filter((element) => visibleBox(element) !== null);
   // Several elements in one ring (a tab bar and its panel, a pin and its popup) get plain rounded corners.
