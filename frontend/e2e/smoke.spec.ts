@@ -28,4 +28,13 @@ test("an example trip produces the itinerary, rule checks and daily logs", async
   await expect(page.getByRole("heading", { name: "Daily logs" })).toBeVisible();
   await expect(page.getByRole("article", { name: /Driver's daily log for 2026-10-01/ })).toBeVisible();
   await expect(page.getByRole("article", { name: /Driver's daily log for 2026-10-02/ })).toBeHidden();
+
+  // Trip replay: the home-terminal clock moves once the trip plays.
+  await page.getByRole("button", { name: "Play trip" }).click();
+  const replay = page.getByRole("group", { name: "Trip replay" });
+  await expect(replay.getByRole("button", { name: "Pause trip" })).toBeVisible();
+  const clock = replay.getByText(/^(Thu|Fri), Oct \d · \d\d:\d\d CDT$/);
+  const initial = await clock.textContent();
+  await page.waitForTimeout(1500);
+  await expect(clock).not.toHaveText(initial ?? "");
 });
