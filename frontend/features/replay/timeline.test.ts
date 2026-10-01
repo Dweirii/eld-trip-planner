@@ -3,6 +3,7 @@ import { sampleTrip } from "@/lib/api/__fixtures__";
 import type { Stop, Trip } from "@/lib/api/types";
 import {
   type Interval,
+  announcement,
   buildTimeline,
   clockAt,
   dayMarks,
@@ -10,6 +11,7 @@ import {
   routeLocator,
   stateAt,
   stateDetail,
+  stopMarks,
   stopSteps,
   totalMinutes,
   valueText,
@@ -205,6 +207,15 @@ describe("scrubber marks", () => {
     ]);
   });
 
+  it("places every stop, the start included, at the minute it begins", () => {
+    expect(stopMarks(sampleTrip)).toEqual([
+      { t: 0, id: "s0", kind: "start" },
+      { t: 345, id: "s3", kind: "pickup" },
+      { t: 720, id: "s5", kind: "rest" },
+      { t: 1725, id: "s7", kind: "dropoff" },
+    ]);
+  });
+
   it("steps from stop to stop, then to the end (the reduced-motion playback)", () => {
     expect(stopSteps(buildTimeline(sampleTrip))).toEqual([345, 720, 1725, 1785]);
     expect(stopSteps(buildTimeline(tripWithBreak))).toEqual([345, 720, 1560, 1725, 1785]);
@@ -218,6 +229,12 @@ describe("describing the state", () => {
     expect(stateDetail(sampleTrip, stateAt(timeline, 1522.5))).toBe("mile 788");
     expect(stateDetail(sampleTrip, stateAt(timeline, 1000))).toBe("10-h rest at Jasper, AR");
     expect(stateDetail(sampleTrip, stateAt(timeline, 360))).toBe("Pickup at St. Louis, MO");
+  });
+
+  it("announces where the truck is heading, or what the driver is doing", () => {
+    expect(announcement(sampleTrip, stateAt(timeline, 10))).toBe("Driving to St. Louis, MO");
+    expect(announcement(sampleTrip, stateAt(timeline, 1000))).toBe("Sleeper berth: 10-h rest at Jasper, AR");
+    expect(announcement(sampleTrip, stateAt(timeline, 1785))).toBe("On duty (not driving): Dropoff at Dallas, TX");
   });
 
   it("reads the scrubber position as date, time, status and detail", () => {

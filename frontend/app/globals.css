@@ -82,6 +82,40 @@ body {
   scale: 1.35;
 }
 
+/*
+ * Trip replay scrubber: the native range input stays on top for pointer, keyboard and assistive tech, but
+ * invisible; the track and thumb drawn beneath it follow the exact time. Its thumb has the drawn thumb's
+ * width, so a pointer position maps to the same time in both.
+ */
+.scrubber-input {
+  appearance: none;
+  background: transparent;
+}
+.scrubber-input::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+}
+.scrubber-input::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+}
+
+@keyframes bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-bar-in {
+  animation: bar-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
 /* The paper log sheet: faint ruled lines like a real form. */
 .log-sheet {
   background-image: repeating-linear-gradient(
@@ -112,6 +146,9 @@ body {
   .animate-draw-route {
     animation: none;
     stroke-dasharray: none;
+  }
+  .animate-bar-in {
+    animation: none;
   }
 }
 

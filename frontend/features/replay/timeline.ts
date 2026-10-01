@@ -207,6 +207,18 @@ export function dayMarks(trip: Pick<Trip, "stops" | "summary">, total: number): 
   return marks;
 }
 
+export interface StopMark {
+  t: number;
+  id: string;
+  kind: StopKind;
+}
+
+/** Every stop, the start included, at the minute it begins. */
+export function stopMarks(trip: TripStops): StopMark[] {
+  const start = trip.stops[0]?.starts_at;
+  return trip.stops.map((stop) => ({ t: minutesBetween(start, stop.starts_at), id: stop.id, kind: stop.kind }));
+}
+
 /** Where reduced-motion playback stops: the start of each stop, then the end of the trip. */
 export function stopSteps(timeline: readonly Interval[]): number[] {
   const steps = timeline.filter((interval) => interval.kind !== "drive").map((interval) => interval.startMin);
@@ -219,6 +231,15 @@ export function stateDetail(trip: TripStops, state: ReplayState): string {
   if (state.kind === "drive" || state.stopId === undefined) return `mile ${miles(state.mile)}`;
   const stop = trip.stops.find((candidate) => candidate.id === state.stopId);
   return stop ? `${STOP_STYLE[stop.kind].label} at ${stop.place}` : STOP_STYLE[state.kind].label;
+}
+
+/** Read out as the replay moves on: "Driving to St. Louis, MO", "Sleeper berth: 10-h rest at Jasper, AR". */
+export function announcement(trip: TripStops, state: ReplayState): string {
+  if (state.kind === "drive") {
+    const next = trip.stops.find((stop) => stop.id === state.toStopId);
+    return next ? `Driving to ${next.place}` : STATUS_NAMES.driving;
+  }
+  return `${STATUS_NAMES[state.status]}: ${stateDetail(trip, state)}`;
 }
 
 /** The scrubber's aria-valuetext: "Fri, Oct 2, 09:45 EDT: Driving, mile 662". */
