@@ -13,4 +13,12 @@ describe("TopBar", () => {
     );
     expect(screen.getByRole("button", { name: "How it works" })).toBeInTheDocument();
   });
+
+  it("offers the guided tour first, before How it works", () => {
+    render(<TopBar />);
+    const tour = screen.getByRole("link", { name: "Take the tour" });
+    expect(tour).toHaveAttribute("href", "/?tour=1");
+    const howItWorks = screen.getByRole("button", { name: "How it works" });
+    expect(tour.compareDocumentPosition(howItWorks) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

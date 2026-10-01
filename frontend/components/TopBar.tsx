@@ -16,7 +16,21 @@ export function TopBar() {
         Milepost
       </Link>
       <span className="hidden text-xs text-mint/80 sm:inline">ELD trip planner</span>
-      <nav className="ml-auto flex items-center gap-4 text-xs font-semibold text-white/80">
+      <nav className="ml-auto flex items-center gap-3 text-xs font-semibold text-white/80 sm:gap-4">
+        {/* A plain link: the workspace starts the guided tour when it sees ?tour=1. */}
+        <Link
+          href="/?tour=1"
+          aria-label="Take the tour"
+          className="flex items-center gap-1.5 rounded-full bg-white/10 py-1 pl-1 pr-2.5 text-white transition hover:bg-white/20"
+        >
+          <span aria-hidden="true" className="grid size-[18px] place-items-center rounded-full bg-coral-ink">
+            <svg viewBox="0 0 10 10" width="8" height="8" className="translate-x-[0.5px]">
+              <path d="M2.5 1.4v7.2a.5.5 0 0 0 .76.43l5.6-3.6a.5.5 0 0 0 0-.86l-5.6-3.6a.5.5 0 0 0-.76.43z" fill="#fff" />
+            </svg>
+          </span>
+          <span className="sm:hidden">Tour</span>
+          <span className="hidden sm:inline">Take the tour</span>
+        </Link>
         <HowItWorks />
         <a href="/api/docs/" target="_blank" rel="noreferrer" className="hover:text-white">
           API docs
