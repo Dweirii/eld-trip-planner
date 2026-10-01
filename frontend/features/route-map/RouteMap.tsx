@@ -54,7 +54,8 @@ function placePreview(point: PreviewPoint): Placed {
 /** Leave room for the floating panel (desktop) or the bottom sheet (mobile) when fitting a route. */
 function panelPadding(container: HTMLElement): maplibregl.PaddingOptions {
   if (window.matchMedia("(min-width: 1024px)").matches) return { top: 64, right: 64, bottom: 64, left: 390 };
-  return { top: 40, right: 32, bottom: Math.round(container.clientHeight * 0.62), left: 32 };
+  // Top: clear of the map credits, which start expanded on small screens.
+  return { top: 80, right: 32, bottom: Math.round(container.clientHeight * 0.62), left: 32 };
 }
 
 interface MarkerEntry {
