@@ -1,0 +1,23 @@
+{
+  "type": "FeatureCollection",
+  "bbox": [-96.797, 32.7767, -87.6298, 41.8781],
+  "features": [
+    {
+      "type": "Feature",
+      "bbox": [-96.797, 32.7767, -87.6298, 41.8781],
+      "properties": {
+        "segments": [
+          {"distance": 297.1, "duration": 17100.0},
+          {"distance": 635.3, "duration": 38160.0}
+        ],
+        "summary": {"distance": 932.4, "duration": 55260.0},
+        "way_points": [0, 2, 4]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [[-87.6298, 41.8781], [-89.65, 39.8], [-90.1994, 38.627], [-94.5, 36.5], [-96.797, 32.7767]]
+      }
+    }
+  ],
+  "metadata": {"service": "routing", "query": {"profile": "driving-hgv", "units": "mi"}}
+}

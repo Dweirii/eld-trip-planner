@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Milepost: app shell and paper log sheet</title>
+<style>
+:root{--accent:#008080;--text-secondary:#5b7680;--border:#d7e3e3;--bg-secondary:#fff}
+body{margin:0;padding:32px;background:#eef3f3;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f2b33}
+main{max-width:1180px;margin:0 auto} h2{margin:0 0 6px;font-size:22px} .subtitle{color:#5b7680;margin:0 0 20px;font-size:14px;line-height:1.5}
+</style></head><body><main>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Mono:wght@400;600&family=Caveat:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+.H { background:#f5f8f8; color:#0f2b33; font-family:'Plus Jakarta Sans',sans-serif; border-radius:12px; overflow:hidden; border:1px solid #d7e3e3; }
+.H .top { background:#043b4b; color:#fff; display:flex; align-items:center; gap:16px; padding:12px 20px; }
+.H .logo { font-weight:800; font-size:17px; letter-spacing:.01em; }
+.H .logo i { display:inline-block; width:8px; height:8px; border-radius:50%; background:#f84960; margin-right:7px; vertical-align:1px; box-shadow:10px 0 0 #bcddde; margin-right:17px; }
+.H .route { flex:1; font-size:13px; opacity:.9; display:flex; align-items:center; gap:8px; }
+.H .route b { font-weight:600; }
+.H .pill { font-size:11px; background:rgba(255,255,255,.12); padding:3px 9px; border-radius:99px; }
+.H .cta { background:#f84960; color:#fff; font-weight:700; font-size:12px; padding:8px 16px; border-radius:99px; }
+.H .row { display:grid; grid-template-columns:280px 1fr; gap:14px; padding:14px; }
+.H .panel { background:#fff; border-radius:14px; box-shadow:0 2px 14px rgba(4,59,75,.07); padding:16px; }
+.H .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+.H .stat b { display:block; font-size:22px; font-weight:800; line-height:1; }
+.H .stat span { font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:#5b7680; }
+.H h4 { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#5b7680; margin:14px 0 8px; }
+.H .check { display:flex; justify-content:space-between; font-size:12px; padding:5px 0; border-bottom:1px dashed #e2ecec; }
+.H .check em { font-style:normal; font-variant-numeric:tabular-nums; color:#006b6b; font-weight:700; }
+.H .stop { display:flex; gap:10px; font-size:12px; padding:6px 0; }
+.H .stop t { width:40px; flex:none; font-variant-numeric:tabular-nums; color:#5b7680; }
+.H .stop i { width:10px; height:10px; border-radius:50%; margin-top:3px; flex:none; border:2px solid #fff; box-shadow:0 0 0 1px #cfdede; }
+.H .map { border-radius:14px; overflow:hidden; box-shadow:0 2px 14px rgba(4,59,75,.07); min-height:360px; }
+.H .map svg { width:100%; height:100%; display:block; }
+.H .logs { padding:0 14px 18px; }
+.H .logbar { display:flex; align-items:center; gap:8px; margin:6px 0 12px; }
+.H .logbar h3 { font-size:16px; font-weight:800; margin:0 10px 0 0; }
+.H .tab { font-size:12px; padding:6px 12px; border-radius:99px; background:#e3eeee; color:#0f2b33; font-weight:600; }
+.H .tab.on { background:#043b4b; color:#fff; }
+.H .ghost { margin-left:auto; font-size:12px; font-weight:700; color:#043b4b; border:1.5px solid #043b4b; padding:6px 14px; border-radius:99px; }
+/* the paper sheet */
+.sheet { background:#fffdf8; border-radius:4px; padding:22px 26px 18px; box-shadow:0 1px 0 #e6dcc8, 0 14px 34px rgba(4,59,75,.13); font-family:'IBM Plex Mono',monospace; color:#1c2433; position:relative; }
+.sheet::before { content:''; position:absolute; inset:0; background:repeating-linear-gradient(0deg, transparent 0 27px, rgba(31,79,181,.035) 27px 28px); pointer-events:none; border-radius:4px; }
+.sheet .hd { display:grid; grid-template-columns:1.3fr 1fr 1.2fr; gap:18px; align-items:end; }
+.sheet .title { font-family:'Fraunces',serif; font-weight:700; font-size:22px; line-height:1; }
+.sheet .title small { display:block; font-family:'IBM Plex Mono'; font-weight:400; font-size:10px; margin-top:4px; }
+.fld { border-bottom:1.3px solid #1c2433; min-height:26px; display:flex; align-items:flex-end; padding-bottom:1px; }
+.ink { font-family:'Caveat',cursive; color:#1f4fb5; font-size:22px; line-height:1; font-weight:700; }
+.lbl { font-size:9px; text-transform:uppercase; letter-spacing:.05em; margin-top:3px; color:#4a5568; }
+.sheet .note { font-size:9px; line-height:1.35; }
+.sheet .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:12px; }
+.sheet .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:10px; }
+.recap { display:grid; grid-template-columns:1.1fr repeat(4,1fr) 1.4fr; gap:10px; margin-top:12px; border-top:2px solid #1c2433; padding-top:8px; font-size:9px; align-items:end; }
+.recap .ink { font-size:20px; }
+.rec { font-size:11px; font-weight:700; background:var(--accent); color:#fff; padding:2px 8px; border-radius:99px; margin-left:6px; }
+</style>
+
+<h2>Milepost: app shell and paper log sheet</h2>
+<p class="subtitle">Visual direction: Spotter-palette app shell, with daily log sheets drawn like the FMCSA paper form. Filled-in values appear in blue ink, as in the FMCSA completed example. Sample data.</p>
+
+<div class="H">
+  <div class="top">
+    <span class="logo"><i></i>Milepost</span>
+    <span class="route"><b>Chicago, IL</b> → <b>St. Louis, MO</b> <span class="pill">pickup</span> → <b>Dallas, TX</b> <span class="pill">dropoff</span></span>
+    <span class="pill">Cycle used 12.5 h</span>
+    <span class="cta">New trip</span>
+  </div>
+
+  <div class="row">
+    <div class="panel">
+      <div class="stats"><div class="stat"><b>932</b><span>miles</span></div><div class="stat"><b>2</b><span>log days</span></div><div class="stat"><b>27h15</b><span>door to door</span></div></div>
+      <h4>Rule checks · 49 CFR 395</h4>
+      <div class="check"><span>11-h driving limit</span><em>11.00 / 11 ✓</em></div>
+      <div class="check"><span>14-h driving window</span><em>12.00 / 14 ✓</em></div>
+      <div class="check"><span>30-min break after 8 h</span><em>6.25 / 8 ✓</em></div>
+      <div class="check"><span>70-h / 8-day cycle</span><em>31.50 / 70 ✓</em></div>
+      <div class="check" style="border:0"><span>Fuel ≤ 1,000 mi</span><em>932 / 1,000 ✓</em></div>
+      <h4>Itinerary</h4>
+      <div class="stop"><t>06:00</t><i style="background:#008080"></i><div><b>Depart</b> · Chicago, IL</div></div>
+      <div class="stop"><t>10:45</t><i style="background:#f84960"></i><div><b>Pickup · 1 h</b> · St. Louis, MO</div></div>
+      <div class="stop"><t>18:00</t><i style="background:#043b4b"></i><div><b>10-h rest</b> · Vinita, OK</div></div>
+      <div class="stop"><t>09:15</t><i style="background:#f84960"></i><div><b>Dropoff · 1 h</b> · Dallas, TX · day 2</div></div>
+    </div>
+    <div class="map">
+      <svg viewBox="0 0 700 380" preserveAspectRatio="xMidYMid slice">
+        <rect width="700" height="380" fill="#e8efef"/>
+        <g stroke="#d4e1e1" stroke-width="1.5" fill="none"><path d="M0,110 L700,85"/><path d="M0,220 L700,195"/><path d="M170,0 L205,380"/><path d="M390,0 L410,380"/><path d="M560,0 L590,380"/></g>
+        <g fill="#dfe9e9"><path d="M520,20 q30,10 50,40 q-20,25 -55,12z"/></g>
+        <path d="M500,60 C480,95 455,125 435,150 C395,210 345,255 265,315" stroke="#fff" stroke-width="10" stroke-linecap="round" fill="none"/>
+        <path d="M500,60 C480,95 455,125 435,150 C395,210 345,255 265,315" stroke="#008080" stroke-width="5" stroke-linecap="round" fill="none"/>
+        <circle cx="500" cy="60" r="8" fill="#fff" stroke="#043b4b" stroke-width="3"/>
+        <circle cx="435" cy="150" r="11" fill="#f84960" stroke="#fff" stroke-width="3"/>
+        <circle cx="372" cy="233" r="11" fill="#043b4b" stroke="#fff" stroke-width="3"/>
+        <circle cx="265" cy="315" r="11" fill="#f84960" stroke="#fff" stroke-width="3"/>
+        <g font-family="Plus Jakarta Sans" font-size="13" font-weight="700" fill="#0f2b33">
+          <text x="514" y="65">Chicago</text><text x="452" y="155">St. Louis · pickup</text><text x="390" y="238">Vinita · 10-h rest</text><text x="150" y="342">Dallas · dropoff</text></g>
+        <g transform="translate(560,300)"><rect width="120" height="58" rx="10" fill="#fff" opacity=".95"/><g font-family="Plus Jakarta Sans" font-size="10" fill="#0f2b33"><circle cx="14" cy="16" r="5" fill="#f84960"/><text x="26" y="20">Pickup / dropoff</text><circle cx="14" cy="32" r="5" fill="#043b4b"/><text x="26" y="36">Rest</text><circle cx="14" cy="48" r="5" fill="#f5a524"/><text x="26" y="52">Fuel · break</text></g></g>
+      </svg>
+    </div>
+  </div>
+
+  <div class="logs">
+    <div class="logbar"><h3>Daily logs</h3><span class="tab on">Day 1 · Oct 1</span><span class="tab">Day 2 · Oct 2</span><span class="ghost">⎙ Print / PDF all</span></div>
+
+    <div class="sheet">
+      <div class="hd">
+        <div class="title">Drivers Daily Log<small>(24 hours) · home-terminal time: America/Chicago</small></div>
+        <div><div class="fld"><span class="ink">10 &nbsp;/&nbsp; 01 &nbsp;/&nbsp; 2026</span></div><div class="lbl">(month) (day) (year)</div></div>
+        <div class="note">Original — File at home terminal.<br>Duplicate — Driver retains in his/her possession for 8 days.</div>
+      </div>
+      <div class="grid2">
+        <div><div class="fld"><span class="lbl" style="margin:0 8px 3px 0">From:</span><span class="ink">Chicago, IL</span></div></div>
+        <div><div class="fld"><span class="lbl" style="margin:0 8px 3px 0">To:</span><span class="ink">Vinita, OK</span></div></div>
+      </div>
+      <div class="grid3">
+        <div><div class="fld"><span class="ink">640</span></div><div class="lbl">Total miles driving today</div></div>
+        <div><div class="fld"><span class="ink">Milepost Freight Co.</span></div><div class="lbl">Name of carrier</div></div>
+        <div><div class="fld"><span class="ink">Green Bay, WI</span></div><div class="lbl">Main office address</div></div>
+        <div><div class="fld"><span class="ink">TRK 1042 / TRL 88317</span></div><div class="lbl">Truck / trailer numbers</div></div>
+        <div><div class="fld"><span class="ink">J. Driver</span></div><div class="lbl">Driver signature</div></div>
+        <div><div class="fld"><span class="ink">—</span></div><div class="lbl">Co-driver</div></div>
+      </div>
+
+      <svg viewBox="0 0 760 170" style="width:100%;display:block;margin-top:14px">
+        <defs><pattern id="gH" x="84" y="16" width="26" height="24" patternUnits="userSpaceOnUse"><path d="M0,0V24M6.5,0V6M13,0V10M19.5,0V6" stroke="#1c2433" stroke-width=".9"/></pattern></defs>
+        <g font-family="IBM Plex Mono" font-size="8.5" fill="#1c2433">
+          <text x="84" y="11" text-anchor="middle">Mid-</text>
+          <text x="110" y="11" text-anchor="middle">1</text><text x="136" y="11" text-anchor="middle">2</text><text x="162" y="11" text-anchor="middle">3</text><text x="188" y="11" text-anchor="middle">4</text><text x="214" y="11" text-anchor="middle">5</text><text x="240" y="11" text-anchor="middle">6</text><text x="266" y="11" text-anchor="middle">7</text><text x="292" y="11" text-anchor="middle">8</text><text x="318" y="11" text-anchor="middle">9</text><text x="344" y="11" text-anchor="middle">10</text><text x="370" y="11" text-anchor="middle">11</text><text x="396" y="11" text-anchor="middle">Noon</text><text x="422" y="11" text-anchor="middle">1</text><text x="448" y="11" text-anchor="middle">2</text><text x="474" y="11" text-anchor="middle">3</text><text x="500" y="11" text-anchor="middle">4</text><text x="526" y="11" text-anchor="middle">5</text><text x="552" y="11" text-anchor="middle">6</text><text x="578" y="11" text-anchor="middle">7</text><text x="604" y="11" text-anchor="middle">8</text><text x="630" y="11" text-anchor="middle">9</text><text x="656" y="11" text-anchor="middle">10</text><text x="682" y="11" text-anchor="middle">11</text><text x="708" y="11" text-anchor="middle">Mid-</text>
+          <text x="0" y="31">1. Off Duty</text><text x="0" y="55">2. Sleeper</text><text x="0" y="79">3. Driving</text><text x="0" y="103">4. On Duty</text>
+          <text x="722" y="11">Total</text>
+        </g>
+        <rect x="84" y="16" width="624" height="96" fill="url(#gH)" stroke="#1c2433" stroke-width="1.2"/>
+        <g stroke="#1c2433" stroke-width="1.2"><path d="M84,40H708M84,64H708M84,88H708"/></g>
+        <!-- duty line: 0-6 off, 6-10.75 drive, 10.75-11.75 on, 11.75-18 drive, 18-24 sleeper ; 26px/h -->
+        <path d="M84,28 H240 V76 H363.5 V100 H389.5 V76 H552 V52 H708" fill="none" stroke="#1f4fb5" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/>
+        <g fill="#1f4fb5"><circle cx="240" cy="28" r="2.6"/><circle cx="240" cy="76" r="2.6"/><circle cx="363.5" cy="76" r="2.6"/><circle cx="363.5" cy="100" r="2.6"/><circle cx="389.5" cy="100" r="2.6"/><circle cx="389.5" cy="76" r="2.6"/><circle cx="552" cy="76" r="2.6"/><circle cx="552" cy="52" r="2.6"/></g>
+        <g font-family="Caveat" font-weight="700" font-size="19" fill="#1f4fb5"><text x="720" y="34">6</text><text x="720" y="58">6</text><text x="720" y="82">11</text><text x="720" y="106">1</text><text x="716" y="128">=24</text></g>
+        <!-- remarks brackets + slanted places -->
+        <text x="0" y="126" font-family="IBM Plex Mono" font-size="8.5" fill="#1c2433">Remarks</text>
+        <g stroke="#1f4fb5" stroke-width="1.6" fill="none"><path d="M234,116 v6 h12 v-6"/><path d="M363.5,116 v6 h26 v-6"/><path d="M546,116 v6 h162 v-6"/></g>
+        <g font-family="Caveat" font-weight="700" font-size="15" fill="#1c2433">
+          <text transform="translate(238,136) rotate(28)">Chicago, IL · depart</text>
+          <text transform="translate(370,136) rotate(28)">St. Louis, MO · pickup</text>
+          <text transform="translate(552,136) rotate(28)">Vinita, OK · 10-h rest</text>
+        </g>
+      </svg>
+
+      <div class="grid2" style="margin-top:0">
+        <div><div class="fld"><span class="ink">BOL-2026-0142 · Acme Paper Co. · paper products</span></div><div class="lbl">Shipping documents · shipper &amp; commodity</div></div>
+        <div class="note" style="align-self:end">Enter name of place you reported and where released from work and when and where each change of duty occurred. Use time standard of home terminal.</div>
+      </div>
+      <div class="recap">
+        <div><b>Recap:</b> complete at end of day</div>
+        <div><div class="fld"><span class="ink">12</span></div>On duty today (lines 3 &amp; 4)</div>
+        <div><div class="fld"><span class="ink">24.5</span></div>A. On duty last 7 days incl. today</div>
+        <div><div class="fld"><span class="ink">45.5</span></div>B. Available tomorrow (70 − A)</div>
+        <div><div class="fld"><span class="ink">24.5</span></div>C. On duty last 5 days incl. today</div>
+        <div>70 Hour / 8 Day driver · *34 consecutive hours off resets to 70 h available</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main></body></html>

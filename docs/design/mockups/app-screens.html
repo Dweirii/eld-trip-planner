@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Milepost: app screens</title>
+<style>
+:root{--accent:#008080;--text-secondary:#5b7680;--border:#d7e3e3;--bg-secondary:#fff}
+body{margin:0;padding:32px;background:#eef3f3;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f2b33}
+main{max-width:1180px;margin:0 auto} h2{margin:0 0 6px;font-size:22px} .subtitle{color:#5b7680;margin:0 0 20px;font-size:14px;line-height:1.5}
+</style></head><body><main>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=IBM+Plex+Mono:wght@400;600&family=Caveat:wght@700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+.F { font-family:'Plus Jakarta Sans',sans-serif; color:#0f2b33; }
+.F .lbl2 { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:var(--text-secondary); margin:26px 0 10px; }
+.desk { border-radius:12px; overflow:hidden; border:1px solid #d7e3e3; background:#f5f8f8; }
+.bar { background:#043b4b; color:#fff; height:44px; display:flex; align-items:center; padding:0 18px; gap:14px; font-size:13px; }
+.bar .logo { font-weight:800; }
+.bar .logo i { display:inline-block; width:7px; height:7px; border-radius:50%; background:#f84960; box-shadow:9px 0 0 #bcddde; margin-right:16px; vertical-align:1px; }
+.bar .sp { flex:1; } .bar a { opacity:.8; font-size:12px; }
+.stage { position:relative; height:470px; background:#e8efef; }
+.stage > svg { position:absolute; inset:0; width:100%; height:100%; }
+.panel { position:absolute; left:16px; top:16px; bottom:16px; width:310px; background:#fff; border-radius:16px; box-shadow:0 8px 30px rgba(4,59,75,.16); padding:16px; display:flex; flex-direction:column; gap:10px; overflow:hidden; }
+.ph { display:flex; align-items:flex-start; gap:8px; }
+.ph .t { flex:1; font-weight:800; font-size:14px; line-height:1.3; }
+.ph .t small { display:block; font-weight:500; font-size:11px; color:#5b7680; }
+.edit { font-size:11px; font-weight:700; color:#043b4b; border:1.5px solid #043b4b; border-radius:99px; padding:5px 10px; white-space:nowrap; }
+.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; background:#f3f8f8; border-radius:12px; padding:10px; }
+.stat b { display:block; font-size:19px; font-weight:800; line-height:1; } .stat span { font-size:9.5px; text-transform:uppercase; letter-spacing:.07em; color:#5b7680; }
+.tabs { display:flex; gap:4px; background:#eef4f4; border-radius:99px; padding:3px; }
+.tabs div { flex:1; text-align:center; font-size:11.5px; font-weight:700; padding:6px; border-radius:99px; color:#4b6770; }
+.tabs .on { background:#fff; color:#0f2b33; box-shadow:0 1px 4px rgba(4,59,75,.12); }
+.day { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#5b7680; margin-top:2px; }
+.stop { display:grid; grid-template-columns:40px 14px 1fr; gap:8px; font-size:11.5px; padding:6px 8px; border-radius:10px; align-items:start; }
+.stop t { font-variant-numeric:tabular-nums; color:#5b7680; }
+.stop i { width:12px; height:12px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px #cfdede; margin-top:2px; }
+.stop small { display:block; color:#5b7680; font-size:10.5px; }
+.stop.hl { background:#e6f3f3; box-shadow:inset 3px 0 0 #008080; }
+.pop { position:absolute; background:#fff; border-radius:12px; box-shadow:0 6px 22px rgba(4,59,75,.2); padding:10px 12px; font-size:11.5px; width:190px; }
+.pop b { display:block; font-size:12.5px; } .pop span { color:#5b7680; }
+.legend { position:absolute; right:16px; bottom:16px; background:rgba(255,255,255,.95); border-radius:12px; padding:9px 12px; font-size:10.5px; display:grid; gap:4px; box-shadow:0 2px 10px rgba(4,59,75,.1); }
+.legend div { display:flex; align-items:center; gap:7px; } .legend i { width:10px; height:10px; border-radius:50%; }
+.logs { padding:16px 18px 20px; }
+.logbar { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.logbar h3 { margin:0 10px 0 0; font-size:16px; font-weight:800; }
+.tab { font-size:12px; padding:6px 12px; border-radius:99px; background:#e3eeee; font-weight:600; } .tab.on { background:#043b4b; color:#fff; }
+.ghost { margin-left:auto; font-size:12px; font-weight:700; color:#fff; background:#f84960; padding:7px 14px; border-radius:99px; }
+.sheet { background:#fffdf8; border-radius:4px; padding:14px 18px 8px; box-shadow:0 1px 0 #e6dcc8, 0 12px 30px rgba(4,59,75,.12); }
+.row3 { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+.phone { width:290px; height:590px; border-radius:36px; border:10px solid #0f2b33; overflow:hidden; position:relative; background:#e8efef; box-shadow:0 10px 30px rgba(0,0,0,.15); }
+.sheetm { position:absolute; left:0; right:0; bottom:0; top:250px; background:#fff; border-radius:22px 22px 0 0; box-shadow:0 -6px 24px rgba(4,59,75,.18); padding:10px 14px; display:flex; flex-direction:column; gap:9px; }
+.handle { width:40px; height:5px; border-radius:99px; background:#cfdede; margin:0 auto 2px; }
+.tile { border-radius:12px; border:1px solid #d7e3e3; background:#f5f8f8; overflow:hidden; }
+.tile .cap { font-size:12px; font-weight:700; padding:10px 12px; border-top:1px solid #e1eaea; background:#fff; }
+.sk { background:linear-gradient(90deg,#e7efef,#f4f8f8,#e7efef); border-radius:8px; }
+</style>
+
+<div class="F">
+<h2>Milepost: app screens</h2>
+<p class="subtitle">① Desktop results with linked stop highlighting · ② Mobile bottom sheet · ③ Loading · ④ Print / PDF. Sample data.</p>
+
+<div class="lbl2">① Desktop, after "Plan trip": the <u>Vinita rest</u> stop is highlighted on the map, in the itinerary and on the log sheet at once</div>
+<div class="desk">
+  <div class="bar"><span class="logo"><i></i>Milepost</span><span class="sp"></span><a>How it works</a><a>API docs</a><a>GitHub</a></div>
+  <div class="stage">
+    <svg viewBox="0 0 1000 470" preserveAspectRatio="xMidYMid slice">
+      <rect width="1000" height="470" fill="#e8efef"/>
+      <g stroke="#d4e1e1" stroke-width="1.5" fill="none"><path d="M330,120 L1000,95"/><path d="M330,260 L1000,235"/><path d="M520,0 L545,470"/><path d="M760,0 L790,470"/></g>
+      <g fill="#dde8e8"><path d="M860,40 q40,12 60,50 q-25,30 -70,14z"/></g>
+      <path d="M860,70 C830,120 800,160 770,190 C720,260 660,320 560,395" stroke="#fff" stroke-width="11" stroke-linecap="round" fill="none"/>
+      <path d="M860,70 C830,120 800,160 770,190 C720,260 660,320 560,395" stroke="#008080" stroke-width="5.5" stroke-linecap="round" fill="none"/>
+      <circle cx="860" cy="70" r="8" fill="#fff" stroke="#043b4b" stroke-width="3"/>
+      <circle cx="770" cy="190" r="11" fill="#f84960" stroke="#fff" stroke-width="3"/>
+      <circle cx="690" cy="295" r="20" fill="#008080" opacity=".18"/>
+      <circle cx="690" cy="295" r="12" fill="#043b4b" stroke="#fff" stroke-width="3.5"/>
+      <circle cx="560" cy="395" r="11" fill="#f84960" stroke="#fff" stroke-width="3"/>
+      <g font-size="12.5" font-weight="700" fill="#0f2b33" font-family="Plus Jakarta Sans"><text x="874" y="74">Chicago</text><text x="786" y="194">St. Louis</text><text x="440" y="420">Dallas</text></g>
+    </svg>
+    <div class="pop" style="left:560px;top:190px"><b>10-h rest · sleeper berth</b><span>Vinita, OK · mile 640</span><br><span>Oct 1 18:00 → Oct 2 04:00</span></div>
+    <div class="legend"><div><i style="background:#fff;border:2.5px solid #043b4b;width:6px;height:6px"></i>Start</div><div><i style="background:#f84960"></i>Pickup / dropoff</div><div><i style="background:#f5a524"></i>Fuel</div><div><i style="background:#7fcdc4"></i>30-min break</div><div><i style="background:#043b4b"></i>10-h rest / 34-h restart</div></div>
+    <div class="panel">
+      <div class="ph"><div class="t">Chicago → St. Louis → Dallas<small>Cycle used 12.5 h · starts Oct 1, 06:00 CDT</small></div><span class="edit">✎ Edit trip</span></div>
+      <div class="stats"><div class="stat"><b>932</b><span>miles</span></div><div class="stat"><b>2</b><span>log days</span></div><div class="stat"><b>27h15</b><span>door to door</span></div></div>
+      <div class="tabs"><div class="on">Itinerary</div><div>Rules ✓ 5/5</div><div>Assumptions</div></div>
+      <div class="day">Wed · Oct 1</div>
+      <div class="stop"><t>06:00</t><i style="background:#fff;box-shadow:0 0 0 2.5px #043b4b"></i><div><b>Depart</b> · Chicago, IL<small>Driving · 297 mi</small></div></div>
+      <div class="stop"><t>10:45</t><i style="background:#f84960"></i><div><b>Pickup</b> · St. Louis, MO<small>On duty · 1 h · mile 297</small></div></div>
+      <div class="stop hl"><t>18:00</t><i style="background:#043b4b"></i><div><b>10-h rest</b> · Vinita, OK<small>Sleeper berth · 10 h · mile 640</small></div></div>
+      <div class="day">Thu · Oct 2</div>
+      <div class="stop"><t>04:00</t><i style="background:#fff;box-shadow:0 0 0 2.5px #008080"></i><div><b>Resume</b> · Vinita, OK<small>Driving · 292 mi</small></div></div>
+      <div class="stop"><t>09:15</t><i style="background:#f84960"></i><div><b>Dropoff</b> · Dallas, TX<small>On duty · 1 h · mile 932</small></div></div>
+    </div>
+  </div>
+  <div class="logs">
+    <div class="logbar"><h3>Daily logs</h3><span class="tab on">Day 1 · Oct 1</span><span class="tab">Day 2 · Oct 2</span><span class="tab">Show all</span><span class="ghost">⎙ Print / PDF all</span></div>
+    <div class="sheet">
+      <svg viewBox="0 0 760 150" style="width:100%;display:block">
+        <defs><pattern id="gF" x="84" y="16" width="26" height="24" patternUnits="userSpaceOnUse"><path d="M0,0V24M6.5,0V6M13,0V10M19.5,0V6" stroke="#1c2433" stroke-width=".9"/></pattern></defs>
+        <rect x="533" y="12" width="175" height="140" fill="#008080" opacity=".09" rx="3"/>
+        <g font-family="IBM Plex Mono" font-size="8.5" fill="#1c2433"><text x="84" y="11" text-anchor="middle">Mid</text><text x="240" y="11" text-anchor="middle">6</text><text x="396" y="11" text-anchor="middle">Noon</text><text x="552" y="11" text-anchor="middle">6</text><text x="708" y="11" text-anchor="middle">Mid</text>
+          <text x="0" y="31">1. Off Duty</text><text x="0" y="55">2. Sleeper</text><text x="0" y="79">3. Driving</text><text x="0" y="103">4. On Duty</text></g>
+        <rect x="84" y="16" width="624" height="96" fill="url(#gF)" stroke="#1c2433" stroke-width="1.2"/>
+        <g stroke="#1c2433" stroke-width="1.2"><path d="M84,40H708M84,64H708M84,88H708"/></g>
+        <path d="M84,28 H240 V76 H363.5 V100 H389.5 V76 H552 V52 H708" fill="none" stroke="#1f4fb5" stroke-width="2.8" stroke-linejoin="round"/>
+        <g font-family="Caveat" font-weight="700" font-size="19" fill="#1f4fb5"><text x="720" y="34">6</text><text x="720" y="58">6</text><text x="720" y="82">11</text><text x="720" y="106">1</text></g>
+        <g stroke="#1f4fb5" stroke-width="1.6" fill="none"><path d="M234,116 v6 h12 v-6"/><path d="M363.5,116 v6 h26 v-6"/><path d="M546,116 v6 h162 v-6" stroke="#008080" stroke-width="2.6"/></g>
+        <g font-family="Caveat" font-weight="700" font-size="15" fill="#1c2433"><text transform="translate(238,134) rotate(22)">Chicago, IL</text><text transform="translate(370,134) rotate(22)">St. Louis, MO</text><text transform="translate(556,134) rotate(22)" fill="#006b6b">Vinita, OK · 10-h rest</text></g>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<div class="row3" style="margin-top:8px">
+  <div>
+    <div class="lbl2">② Mobile: the panel becomes a bottom sheet</div>
+    <div class="phone">
+      <div style="background:#043b4b;color:#fff;font-weight:800;font-size:13px;padding:12px 14px">● Milepost</div>
+      <svg viewBox="0 0 290 220" style="width:100%;display:block"><rect width="290" height="220" fill="#e8efef"/><path d="M220,30 C200,70 180,95 160,115 C130,150 100,170 60,200" stroke="#fff" stroke-width="8" fill="none" stroke-linecap="round"/><path d="M220,30 C200,70 180,95 160,115 C130,150 100,170 60,200" stroke="#008080" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="220" cy="30" r="6" fill="#fff" stroke="#043b4b" stroke-width="2.5"/><circle cx="160" cy="115" r="8" fill="#f84960" stroke="#fff" stroke-width="2.5"/><circle cx="112" cy="160" r="8" fill="#043b4b" stroke="#fff" stroke-width="2.5"/><circle cx="60" cy="200" r="8" fill="#f84960" stroke="#fff" stroke-width="2.5"/></svg>
+      <div class="sheetm">
+        <div class="handle"></div>
+        <div class="ph"><div class="t" style="font-size:13px">Chicago → St. Louis → Dallas<small>932 mi · 2 days · 27h15</small></div></div>
+        <div class="tabs"><div class="on">Stops</div><div>Rules</div><div>Logs</div></div>
+        <div class="stop" style="padding:4px"><t>06:00</t><i style="background:#fff;box-shadow:0 0 0 2.5px #043b4b"></i><div><b>Depart</b> · Chicago</div></div>
+        <div class="stop" style="padding:4px"><t>10:45</t><i style="background:#f84960"></i><div><b>Pickup</b> · St. Louis</div></div>
+        <div class="stop hl" style="padding:4px"><t>18:00</t><i style="background:#043b4b"></i><div><b>10-h rest</b> · Vinita</div></div>
+        <div class="stop" style="padding:4px"><t>09:15</t><i style="background:#f84960"></i><div><b>Dropoff</b> · Dallas</div></div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="lbl2">③ Loading (~1–3 s)</div>
+    <div class="tile">
+      <div style="position:relative;height:300px;background:#e8efef">
+        <svg viewBox="0 0 300 300" style="position:absolute;inset:0;width:100%;height:100%"><path d="M250,40 C220,90 190,120 160,150 C120,195 90,225 50,260" stroke="#008080" stroke-width="4" fill="none" stroke-dasharray="8 8" opacity=".55"/><path d="M250,40 C220,90 190,120 160,150" stroke="#008080" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="160" cy="150" r="7" fill="#008080"/><circle cx="160" cy="150" r="14" fill="#008080" opacity=".18"/></svg>
+        <div style="position:absolute;left:12px;top:12px;width:150px;background:#fff;border-radius:12px;padding:10px;display:grid;gap:7px;box-shadow:0 4px 16px rgba(4,59,75,.12)">
+          <div class="sk" style="height:12px;width:80%"></div><div class="sk" style="height:34px"></div><div class="sk" style="height:10px"></div><div class="sk" style="height:10px;width:70%"></div><div class="sk" style="height:10px;width:85%"></div>
+        </div>
+        <div style="position:absolute;left:0;right:0;bottom:14px;text-align:center;font-size:12px;font-weight:700;color:#043b4b">Planning under FMCSA rules…</div>
+      </div>
+      <div class="cap">The route draws itself while skeletons hold the layout, so nothing jumps.</div>
+    </div>
+  </div>
+  <div>
+    <div class="lbl2">④ Print / PDF: one sheet per page</div>
+    <div class="tile">
+      <div style="height:300px;display:flex;align-items:center;justify-content:center;background:#dfe6e6;gap:10px">
+        <div style="width:118px;height:88px;background:#fffdf8;box-shadow:0 4px 12px rgba(0,0,0,.18);padding:8px;transform:rotate(-3deg)">
+          <div style="font-family:Fraunces,serif;font-size:7px;font-weight:700">Drivers Daily Log</div>
+          <svg viewBox="0 0 100 40" style="width:100%;margin-top:4px"><rect x="0" y="4" width="100" height="28" fill="none" stroke="#1c2433" stroke-width=".6"/><path d="M0,11H100M0,18H100M0,25H100" stroke="#1c2433" stroke-width=".4"/><path d="M0,7.5 H25 V21.5 H45 V28.5 H49 V21.5 H75 V14.5 H100" fill="none" stroke="#1f4fb5" stroke-width="1.2"/></svg>
+          <div style="font-size:6px;color:#5b7680">Page 1 of 2 · Oct 1</div>
+        </div>
+        <div style="width:118px;height:88px;background:#fffdf8;box-shadow:0 4px 12px rgba(0,0,0,.18);padding:8px;transform:rotate(2deg)">
+          <div style="font-family:Fraunces,serif;font-size:7px;font-weight:700">Drivers Daily Log</div>
+          <svg viewBox="0 0 100 40" style="width:100%;margin-top:4px"><rect x="0" y="4" width="100" height="28" fill="none" stroke="#1c2433" stroke-width=".6"/><path d="M0,11H100M0,18H100M0,25H100" stroke="#1c2433" stroke-width=".4"/><path d="M0,14.5 H17 V21.5 H39 V28.5 H43 V7.5 H100" fill="none" stroke="#1f4fb5" stroke-width="1.2"/></svg>
+          <div style="font-size:6px;color:#5b7680">Page 2 of 2 · Oct 2</div>
+        </div>
+      </div>
+      <div class="cap">Landscape Letter, app UI hidden. The browser's "Save as PDF" gives a clean log book.</div>
+    </div>
+  </div>
+</div>
+</div>
+
+</main></body></html>
