@@ -399,6 +399,9 @@ export default function RouteMap({
     if (bounds && fitKey !== lastFitRef.current) {
       lastFitRef.current = fitKey;
       cameraRef.current.fittedAt = performance.now();
+      // Showing results shrinks the map in the same render (desktop: the Daily logs bar peeks below it);
+      // fit to its size now, not the one MapLibre last measured.
+      map.resize();
       map.fitBounds(bounds, {
         padding: panelPadding(map.getContainer(), insetRef.current),
         maxZoom: 9,

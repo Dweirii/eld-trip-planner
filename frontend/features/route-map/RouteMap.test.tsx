@@ -18,6 +18,7 @@ const fake = vi.hoisted(() => {
     handlers = new Map<string, Handler[]>();
     sources = new Map<string, FakeSource>();
     fitBounds = vi.fn();
+    resize = vi.fn();
     easeTo = vi.fn();
     project = vi.fn<(lngLat: [number, number]) => { x: number; y: number }>(() => ({ x: 0, y: 0 }));
     isMoving = vi.fn(() => false);
@@ -326,6 +327,12 @@ describe("RouteMap", () => {
       expect(map.easeTo).toHaveBeenCalledTimes(2);
       now.mockRestore();
     });
+  });
+
+  it("measures the map before fitting a route, as the results resize it in the same render", () => {
+    const { map } = setup();
+    expect(map.resize).toHaveBeenCalled();
+    expect(map.resize.mock.invocationCallOrder[0]).toBeLessThan(map.fitBounds.mock.invocationCallOrder[0]);
   });
 
   it("keeps extra room clear at the bottom when fitting, if asked (the guided tour's captions)", () => {
