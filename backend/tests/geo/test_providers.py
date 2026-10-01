@@ -129,6 +129,8 @@ def test_ors_parses_legs_geometry_and_waypoints():
     assert body["coordinates"][0] == [-87.6298, 41.8781]  # lng, lat
     assert body["units"] == "mi"
     assert body["radiuses"] == [-1, -1, -1]
+    # ORS only returns the per-leg "segments" when instructions are on (checked against the live API).
+    assert body["instructions"] is True
 
 
 @pytest.mark.parametrize(("status", "code"), [(404, 2010), (404, 2009), (400, 2004)])

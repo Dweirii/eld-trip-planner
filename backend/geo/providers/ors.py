@@ -45,7 +45,7 @@ class OrsRouter:
         body = {
             "coordinates": [[lng, lat] for lat, lng in points],
             "units": "mi",
-            "instructions": False,
+            "instructions": True,  # without them ORS omits the per-leg "segments" we read below
             "radiuses": [-1] * len(points),  # snap each stop to the nearest road, however far
         }
         response = self._post(body)
