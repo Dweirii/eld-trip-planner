@@ -224,6 +224,16 @@ export interface components {
             miles: number;
             /** Format: double */
             hours: number;
+            /** @description Turn-by-turn directions; consecutive steps on the same road are merged. Empty when the leg has no driving or the trip was saved before directions existed. */
+            steps: components["schemas"]["RouteStep"][];
+        };
+        RouteStep: {
+            instruction: string;
+            /** @description The road this step runs on; "" when it has no name. */
+            road: string;
+            /** Format: double */
+            miles: number;
+            minutes: number;
         };
         RuleCheck: {
             id: string;

@@ -1,6 +1,6 @@
 {
-  "id": "9G2xZWC4wF",
-  "created_at": "2026-09-30T11:50:56+00:00",
+  "id": "SIKooS3SKx",
+  "created_at": "2026-10-01T10:22:53+00:00",
   "engine_version": "1.0.0",
   "inputs": {
     "current_location": {
@@ -74,13 +74,53 @@
         "from": "Chicago, IL",
         "to": "St. Louis, MO",
         "miles": 314.8,
-        "hours": 5.72
+        "hours": 5.72,
+        "steps": [
+          {
+            "instruction": "Head toward St. Louis, MO",
+            "road": "I-55 S",
+            "miles": 31.5,
+            "minutes": 34
+          },
+          {
+            "instruction": "Continue onto I-44 W",
+            "road": "I-44 W",
+            "miles": 283.3,
+            "minutes": 309
+          },
+          {
+            "instruction": "Arrive at your destination",
+            "road": "",
+            "miles": 0.0,
+            "minutes": 0
+          }
+        ]
       },
       {
         "from": "St. Louis, MO",
         "to": "Dallas, TX",
         "miles": 657.3,
-        "hours": 11.95
+        "hours": 11.95,
+        "steps": [
+          {
+            "instruction": "Head toward Dallas, TX",
+            "road": "I-40 W",
+            "miles": 65.7,
+            "minutes": 72
+          },
+          {
+            "instruction": "Continue onto I-30 W",
+            "road": "I-30 W",
+            "miles": 591.6,
+            "minutes": 645
+          },
+          {
+            "instruction": "Arrive at your destination",
+            "road": "",
+            "miles": 0.0,
+            "minutes": 0
+          }
+        ]
       }
     ]
   },
