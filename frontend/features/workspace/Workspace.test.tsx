@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sampleTrip } from "@/lib/api/__fixtures__";
@@ -29,6 +29,9 @@ beforeEach(() => {
   planTrip.mockResolvedValue(sampleTrip);
   window.history.replaceState(null, "", "/");
   vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false })));
+  // Replay frames never run on their own here; the tests scrub instead.
+  vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
   Element.prototype.scrollIntoView = vi.fn();
 });
 
@@ -118,5 +121,56 @@ describe("Workspace", () => {
     expect(screen.getByRole("heading", { name: "Plan a trip" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Current location" })).toHaveValue("");
     expect(screen.queryByRole("heading", { name: "Daily logs" })).not.toBeInTheDocument();
+  });
+
+  describe("trip replay", () => {
+    const slider = () => screen.getByRole("slider", { name: "Trip time" });
+    const nowLine = (date: string) =>
+      screen.getByRole("article", { name: `Driver's daily log for ${date}`, hidden: true }).querySelector(
+        '[data-role="now-line"]',
+      );
+
+    it("offers to play the trip once there are results", async () => {
+      render(<Workspace />);
+      expect(screen.queryByRole("button", { name: "Play trip" })).not.toBeInTheDocument();
+      await planExample();
+      expect(screen.getByRole("button", { name: "Play trip" })).toBeInTheDocument();
+    });
+
+    it("moves the itinerary's Now and the log's now line with the scrubber", async () => {
+      render(<Workspace initialTrip={sampleTrip} />);
+      expect(screen.queryByText("Now")).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Play trip" }));
+      expect(screen.getByText("Driving to St. Louis, MO…")).toBeInTheDocument();
+      expect(nowLine("2026-10-01")).not.toBeNull();
+
+      fireEvent.change(slider(), { target: { value: "1000" } });
+      const rest = screen.getByRole("button", { name: /10-h rest · Jasper, AR/ });
+      expect(within(rest).getByText("Now")).toBeInTheDocument();
+      expect(screen.queryByText(/Driving to/)).not.toBeInTheDocument();
+
+      fireEvent.change(slider(), { target: { value: "1500" } });
+      expect(nowLine("2026-10-01")).toBeNull();
+      expect(nowLine("2026-10-02")).not.toBeNull();
+      expect(screen.getByRole("tab", { name: "Day 2 · Fri, Oct 2" })).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("stops and resets on Edit trip and New trip", async () => {
+      render(<Workspace initialTrip={sampleTrip} />);
+      await userEvent.click(screen.getByRole("button", { name: "Play trip" }));
+      fireEvent.change(slider(), { target: { value: "1000" } });
+
+      await userEvent.click(screen.getByRole("button", { name: "Edit trip" }));
+      expect(screen.queryByRole("group", { name: "Trip replay" })).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Back to results" }));
+      expect(screen.getByRole("button", { name: "Play trip" })).toBeInTheDocument();
+      expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+      expect(screen.queryByText("Now")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Play trip" }));
+      expect(slider()).toHaveAttribute("aria-valuetext", "Thu, Oct 1: Driving to St. Louis, MO"); // back at the start
+      await userEvent.click(screen.getByRole("button", { name: "New trip" }));
+      expect(screen.queryByRole("group", { name: "Trip replay" })).not.toBeInTheDocument();
+    });
   });
 });

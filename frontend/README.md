@@ -25,6 +25,8 @@ features/
   directions/           Directions: turn-by-turn route instructions per leg (from OpenRouteService)
   log-sheets/           LogSheet (the paper form as SVG), geometry.ts (grid math), linking.ts
                         (brackets ↔ stops), miles.ts (daily miles), day tabs and print
+  replay/               trip replay: timeline.ts (pure timeline, route and clock math), usePlayback
+                        (rAF clock, speeds, reduced-motion steps), useTripReplay, PlaybackBar
   workspace/            Workspace shell, ResultsPanel, usePlanner (all planner state), toast, overlay
 components/             TopBar, HowItWorks, StopIcon; components/ui/ holds shared primitives (Tabs)
 lib/

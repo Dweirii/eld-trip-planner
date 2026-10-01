@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { type Ref, useId, useState } from "react";
+import { type Ref, memo, useId, useState } from "react";
 import { type TabItem, TabPanel, Tabs } from "@/components/ui/Tabs";
 import { Assumptions } from "@/features/compliance/Assumptions";
 import { RuleChecks } from "@/features/compliance/RuleChecks";
@@ -21,9 +21,25 @@ export interface ResultsPanelProps {
   onNewTrip: () => void;
   /** Focused by the workspace when the panel switches to these results. */
   headingRef?: Ref<HTMLHeadingElement>;
+  /** Trip replay, for the itinerary: the stop the driver is at, or the one the truck is driving to. */
+  currentStopId?: string | null;
+  drivingToStopId?: string | null;
+  /** Keep the itinerary's current row in view (while the replay plays). */
+  followCurrent?: boolean;
 }
 
-export function ResultsPanel({ trip, selectedStopId, onSelectStop, onEdit, onNewTrip, headingRef }: ResultsPanelProps) {
+/** Memoised: a replay re-renders the workspace every frame, but the panel only when the current stop changes. */
+export const ResultsPanel = memo(function ResultsPanel({
+  trip,
+  selectedStopId,
+  onSelectStop,
+  onEdit,
+  onNewTrip,
+  headingRef,
+  currentStopId = null,
+  drivingToStopId = null,
+  followCurrent = false,
+}: ResultsPanelProps) {
   const [tab, setTab] = useState<Tab>("itinerary");
   const tabsId = useId();
   const { inputs, summary } = trip;
@@ -105,7 +121,14 @@ export function ResultsPanel({ trip, selectedStopId, onSelectStop, onEdit, onNew
       />
 
       <TabPanel idBase={tabsId} id="itinerary" hidden={tab !== "itinerary"}>
-        <Itinerary stops={trip.stops} selectedStopId={selectedStopId} onSelectStop={onSelectStop} />
+        <Itinerary
+          stops={trip.stops}
+          selectedStopId={selectedStopId}
+          onSelectStop={onSelectStop}
+          currentStopId={currentStopId}
+          drivingToStopId={drivingToStopId}
+          followCurrent={followCurrent}
+        />
       </TabPanel>
       <TabPanel idBase={tabsId} id="directions" hidden={tab !== "directions"}>
         <Directions legs={trip.route.legs} />
@@ -118,7 +141,7 @@ export function ResultsPanel({ trip, selectedStopId, onSelectStop, onEdit, onNew
       </TabPanel>
     </div>
   );
-}
+});
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (

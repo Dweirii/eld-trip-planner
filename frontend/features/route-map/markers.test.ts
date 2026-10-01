@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { sampleTrip } from "@/lib/api/__fixtures__";
 import { SHAPE_PATHS } from "@/lib/stops";
-import { createMarkerElement, popupContent, stopPopupLines, stopTitle } from "./markers";
+import { createMarkerElement, createTruckElement, popupContent, stopPopupLines, stopTitle } from "./markers";
 
 const rest = sampleTrip.stops.find((stop) => stop.kind === "rest")!;
 
@@ -17,6 +17,16 @@ describe("map markers", () => {
     expect(element).toHaveAttribute("role", "button");
     expect(element).toHaveAttribute("tabindex", "0");
     expect(element).toHaveAccessibleName("Fuel · Joplin, MO");
+  });
+
+  it("draws the replay truck with DOM nodes, hidden from assistive tech and the tab order", () => {
+    const truck = createTruckElement();
+    expect(truck).toHaveClass("truck-marker");
+    expect(truck).toHaveAttribute("aria-hidden", "true");
+    expect(truck).not.toHaveAttribute("tabindex");
+    expect(truck).not.toHaveAttribute("role");
+    expect(truck.querySelectorAll(".truck-marker__body > svg path")).toHaveLength(5);
+    expect(truck.querySelector(".truck-marker__badge")).not.toBeNull();
   });
 
   it("describes a stop for its popup", () => {

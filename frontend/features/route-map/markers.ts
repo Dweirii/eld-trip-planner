@@ -33,6 +33,48 @@ export function createMarkerElement(kind: StopKind, label: string): HTMLDivEleme
   return element;
 }
 
+/** A side-on truck facing right, drawn white on the marker's deep teal (24 × 24 grid). */
+const TRUCK_PATHS: { d: string; fill: string; stroke?: string }[] = [
+  // Trailer, then cab.
+  { d: "M3 5.5h10a1 1 0 0 1 1 1V16H2V6.5a1 1 0 0 1 1-1z", fill: "#fff" },
+  { d: "M15 8.5h3.55a1 1 0 0 1 .82.43l2.45 3.5a1 1 0 0 1 .18.57V16H15z", fill: "#fff" },
+  // Cab window.
+  { d: "M16.4 10h1.85l1.55 2.3h-3.4z", fill: "#043b4b" },
+  // Wheels, ringed in the marker's colour so they read apart from the body.
+  { d: "M6.5 15.2a2.3 2.3 0 1 0 0 4.6a2.3 2.3 0 1 0 0-4.6z", fill: "#fff", stroke: "#043b4b" },
+  { d: "M17.5 15.2a2.3 2.3 0 1 0 0 4.6a2.3 2.3 0 1 0 0-4.6z", fill: "#fff", stroke: "#043b4b" },
+];
+
+/**
+ * The trip-replay truck: decorative (the playback bar announces where it is), so it is hidden from
+ * assistive tech, never focusable, and lets pointer events through to the stop beneath it.
+ */
+export function createTruckElement(): HTMLDivElement {
+  const element = document.createElement("div");
+  element.className = "truck-marker";
+  element.setAttribute("aria-hidden", "true");
+  const body = document.createElement("div");
+  body.className = "truck-marker__body";
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("focusable", "false");
+  for (const { d, fill, stroke } of TRUCK_PATHS) {
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", d);
+    path.setAttribute("fill", fill);
+    if (stroke) {
+      path.setAttribute("stroke", stroke);
+      path.setAttribute("stroke-width", "1.3");
+    }
+    svg.append(path);
+  }
+  const badge = document.createElement("span");
+  badge.className = "truck-marker__badge";
+  body.append(svg, badge);
+  element.append(body);
+  return element;
+}
+
 export function stopTitle(stop: Stop): string {
   return `${STOP_STYLE[stop.kind].label} · ${stop.place}`;
 }

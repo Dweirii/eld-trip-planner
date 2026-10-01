@@ -6,7 +6,7 @@ import RouteMap, { type RouteMapProps } from "./RouteMap";
 
 /** A tiny stand-in for MapLibre (jsdom has no WebGL): it records what the component asks for. */
 const fake = vi.hoisted(() => {
-  type Handler = () => void;
+  type Handler = (event?: unknown) => void;
 
   class FakeSource {
     setData = vi.fn();
@@ -18,6 +18,9 @@ const fake = vi.hoisted(() => {
     handlers = new Map<string, Handler[]>();
     sources = new Map<string, FakeSource>();
     fitBounds = vi.fn();
+    easeTo = vi.fn();
+    project = vi.fn<(lngLat: [number, number]) => { x: number; y: number }>(() => ({ x: 0, y: 0 }));
+    isMoving = vi.fn(() => false);
     addLayer = vi.fn();
     addControl = vi.fn();
     remove = vi.fn();
@@ -34,8 +37,8 @@ const fake = vi.hoisted(() => {
       this.handlers.set(event, [...(this.handlers.get(event) ?? []), handler]);
       return this;
     }
-    emit(event: string) {
-      this.handlers.get(event)?.forEach((handler) => handler());
+    emit(event: string, payload?: unknown) {
+      this.handlers.get(event)?.forEach((handler) => handler(payload));
     }
     addSource(id: string) {
       this.sources.set(id, new FakeSource());
@@ -51,11 +54,15 @@ const fake = vi.hoisted(() => {
   class FakeMarker {
     static instances: FakeMarker[] = [];
     element: HTMLElement;
-    constructor({ element }: { element: HTMLElement }) {
-      this.element = element;
+    lngLat: unknown = null;
+    moves = 0;
+    constructor(readonly options: { element: HTMLElement; subpixelPositioning?: boolean }) {
+      this.element = options.element;
       FakeMarker.instances.push(this);
     }
-    setLngLat() {
+    setLngLat(lngLat: unknown) {
+      this.lngLat = lngLat;
+      this.moves += 1;
       return this;
     }
     addTo(map: FakeMap) {
@@ -125,6 +132,10 @@ function setup(props: Partial<RouteMapProps> = {}) {
   const map = fake.FakeMap.instances.at(-1)!;
   act(() => map.emit("load"));
   return { ...view, map, props: all, rerender: (next: Partial<RouteMapProps>) => view.rerender(<RouteMap {...all} {...next} />) };
+}
+
+function trucks() {
+  return fake.FakeMarker.instances.filter((marker) => marker.element.classList.contains("truck-marker"));
 }
 
 function markerFor(id: string) {
@@ -207,6 +218,114 @@ describe("RouteMap", () => {
     fireEvent.mouseEnter(pickup);
     fireEvent.mouseLeave(pickup);
     expect(popup.isOpen()).toBe(true);
+  });
+
+  describe("trip replay", () => {
+    it("adds one truck and moves it in place, leaving the stop markers and the route alone", () => {
+      const { map, rerender } = setup();
+      const stopMarkers = fake.FakeMarker.instances.length;
+      const rest = markerFor("s5");
+
+      rerender({ replay: { lngLat: [-88, 41], status: "driving" } });
+      expect(trucks()).toHaveLength(1);
+      const [truck] = trucks();
+      expect(truck.options.subpixelPositioning).toBe(true);
+      expect(truck.lngLat).toEqual([-88, 41]);
+      expect(truck.element).toHaveAttribute("data-status", "driving");
+
+      rerender({ replay: { lngLat: [-89, 40], status: "driving" } });
+      rerender({ replay: { lngLat: [-89.5, 39.5], status: "sleeper_berth" } });
+      expect(trucks()).toEqual([truck]);
+      expect(truck.lngLat).toEqual([-89.5, 39.5]);
+      expect(truck.moves).toBe(3);
+      expect(truck.element).toHaveAttribute("data-status", "sleeper_berth");
+      expect(fake.FakeMarker.instances).toHaveLength(stopMarkers + 1);
+      expect(markerFor("s5")).toBe(rest);
+      expect(map.getSource("route")!.setData).toHaveBeenCalledOnce();
+    });
+
+    it("faces the truck the way it is heading, without flickering on a wiggly road", () => {
+      const { rerender } = setup();
+      rerender({ replay: { lngLat: [-88, 41], status: "driving" } });
+      const [truck] = trucks();
+      expect(truck.element).toHaveAttribute("data-facing", "right");
+      rerender({ replay: { lngLat: [-89, 40], status: "driving" } });
+      expect(truck.element).toHaveAttribute("data-facing", "left");
+      rerender({ replay: { lngLat: [-88.99, 39.9], status: "driving" } }); // a little east: still left
+      expect(truck.element).toHaveAttribute("data-facing", "left");
+      rerender({ replay: { lngLat: [-88.5, 39.5], status: "driving" } });
+      expect(truck.element).toHaveAttribute("data-facing", "right");
+      rerender({ replay: { lngLat: [-88.5, 39], status: "driving" } }); // due south: unchanged
+      expect(truck.element).toHaveAttribute("data-facing", "right");
+    });
+
+    it("draws the truck from DOM nodes, out of the keyboard and pointer path", () => {
+      const { rerender } = setup();
+      rerender({ replay: { lngLat: [-88, 41], status: "driving" } });
+      const [truck] = trucks();
+      expect(truck.element).toHaveAttribute("aria-hidden", "true");
+      expect(truck.element).not.toHaveAttribute("tabindex");
+      expect(truck.element.querySelector("svg path")).not.toBeNull();
+      expect(truck.element.querySelector(".truck-marker__badge")).not.toBeNull();
+    });
+
+    it("removes the truck when the replay ends", () => {
+      const { container, rerender } = setup();
+      rerender({ replay: { lngLat: [-88, 41], status: "driving" } });
+      expect(container.querySelector(".truck-marker")).not.toBeNull();
+      rerender({ replay: null });
+      expect(container.querySelector(".truck-marker")).toBeNull();
+      expect(fake.FakeMarker.instances).toHaveLength(sampleTrip.stops.length + 1);
+    });
+
+    it("frames the whole route above the playback bar when the replay starts, unless the user moved the map", () => {
+      const { map, rerender } = setup();
+      Object.defineProperty(map.container, "clientWidth", { value: 1200, configurable: true });
+      Object.defineProperty(map.container, "clientHeight", { value: 800, configurable: true });
+      // Dallas, the south-west corner, sits under the bar.
+      map.project.mockImplementation(([lng]) => (lng < -90 ? { x: 500, y: 700 } : { x: 900, y: 100 }));
+      rerender({ replay: { lngLat: [-87.6, 41.9], status: "driving" } });
+      expect(map.fitBounds).toHaveBeenCalledTimes(2);
+      expect(map.fitBounds.mock.calls[1][1]).toMatchObject({ padding: { top: 64, right: 64, bottom: 164, left: 390 } });
+      expect(map.easeTo).not.toHaveBeenCalled();
+
+      rerender({ replay: null });
+      map.emit("movestart", { originalEvent: new MouseEvent("mousedown") });
+      rerender({ replay: { lngLat: [-87.6, 41.9], status: "driving" } });
+      expect(map.fitBounds).toHaveBeenCalledTimes(2);
+    });
+
+    it("pans gently to keep the truck in view, but not too often or right after the user moves the map", () => {
+      const now = vi.spyOn(performance, "now").mockReturnValue(10_000);
+      const { map, rerender } = setup();
+      Object.defineProperty(map.container, "clientWidth", { value: 1200, configurable: true });
+      Object.defineProperty(map.container, "clientHeight", { value: 800, configurable: true });
+      // In view: right of the panel, above the playback bar.
+      map.project.mockReturnValue({ x: 700, y: 400 });
+      rerender({ replay: { lngLat: [-88, 41], status: "driving" } });
+      expect(map.easeTo).not.toHaveBeenCalled();
+
+      // Behind the panel: pan, putting the truck in the middle of the free area.
+      map.project.mockReturnValue({ x: 200, y: 400 });
+      rerender({ replay: { lngLat: [-88.1, 41], status: "driving" } });
+      expect(map.easeTo).toHaveBeenCalledOnce();
+      expect(map.easeTo.mock.calls[0][0]).toMatchObject({ center: [-88.1, 41], offset: [163, -50] });
+
+      now.mockReturnValue(11_000);
+      rerender({ replay: { lngLat: [-88.2, 41], status: "driving" } });
+      expect(map.easeTo).toHaveBeenCalledOnce();
+
+      now.mockReturnValue(13_000);
+      map.emit("movestart", { originalEvent: new MouseEvent("mousedown") });
+      now.mockReturnValue(14_000);
+      rerender({ replay: { lngLat: [-88.3, 41], status: "driving" } });
+      expect(map.easeTo).toHaveBeenCalledOnce();
+
+      now.mockReturnValue(17_500);
+      rerender({ replay: { lngLat: [-88.4, 41], status: "driving" } });
+      expect(map.easeTo).toHaveBeenCalledTimes(2);
+      now.mockRestore();
+    });
   });
 
   it("names the GeoNames licence in the map credits", () => {

@@ -1,5 +1,6 @@
 "use client";
 
+import clsx from "clsx";
 import { useId, useState } from "react";
 import { StopIcon } from "@/components/StopIcon";
 import type { StopKind } from "@/lib/api/types";
@@ -23,9 +24,10 @@ function LegendList({ id }: { id?: string }) {
 /**
  * Desktop: always shown, bottom right, above the map credits. Small screens: a "Legend" button on the
  * right, just above the bottom sheet's tallest extent, clear of the credits (top left, shown expanded
- * until the map is first moved) and of the sheet; the list opens upwards.
+ * until the map is first moved) and of the sheet; the list opens upwards. While a trip replays, the
+ * playback bar takes that spot on small screens, so the button is `raised` above it.
  */
-export function MapLegend() {
+export function MapLegend({ raised = false }: { raised?: boolean }) {
   const [open, setOpen] = useState(false);
   const listId = useId();
   return (
@@ -33,7 +35,12 @@ export function MapLegend() {
       <div className="pointer-events-none absolute bottom-9 right-3 hidden rounded-xl bg-white/95 p-2.5 text-[10.5px] text-text shadow-md lg:block">
         <LegendList />
       </div>
-      <div className="absolute bottom-[calc(60%+0.75rem)] right-3 text-[11px] text-text lg:hidden">
+      <div
+        className={clsx(
+          "absolute right-3 text-[11px] text-text lg:hidden",
+          raised ? "bottom-[calc(60%+0.75rem+6.75rem)]" : "bottom-[calc(60%+0.75rem)]",
+        )}
+      >
         <div hidden={!open} className="absolute bottom-full right-0 mb-2 w-max rounded-xl bg-white/95 p-2.5 shadow-md">
           <LegendList id={listId} />
         </div>

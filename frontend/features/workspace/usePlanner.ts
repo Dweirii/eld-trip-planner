@@ -101,6 +101,9 @@ export function usePlanner(initialTrip: Trip | null) {
     window.history.replaceState(null, "", "/");
   }, []);
 
+  // Stable, so the memoised results panel doesn't re-render on every frame of a trip replay.
+  const edit = useCallback(() => setMode("form"), []);
+
   const selectStop = useCallback((id: string | null) => {
     setSelectedStopId((current) => (id === null || id === current ? null : id));
   }, []);
@@ -115,7 +118,7 @@ export function usePlanner(initialTrip: Trip | null) {
     selectedStopId,
     plan,
     retry: () => plan(values),
-    edit: () => setMode("form"),
+    edit,
     cancelEdit: () => {
       if (!trip) return;
       // Abandon any plan still in flight: its result must not replace the trip we go back to.

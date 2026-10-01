@@ -52,6 +52,14 @@ export function dutyPath(segments: readonly Segment[]): string {
     .join(" ");
 }
 
+/** The duty status at a minute of the day; a segment owns its start, and the last one also midnight. */
+export function statusAt(segments: readonly Segment[], minute: number): DutyStatus | null {
+  const segment =
+    segments.find((candidate) => candidate.start_minute <= minute && minute < candidate.end_minute) ??
+    segments.findLast((candidate) => candidate.end_minute === minute);
+  return segment?.status ?? null;
+}
+
 export interface Point {
   x: number;
   y: number;
