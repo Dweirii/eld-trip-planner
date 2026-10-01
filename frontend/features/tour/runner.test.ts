@@ -86,13 +86,13 @@ describe("createTourRunner", () => {
     expect(app.log).toEqual(["a", "b", "c"]);
   });
 
-  it("keeps a step until both its enter() and its hold are done", async () => {
+  it("holds a step once its enter() has set it up", async () => {
     const { runner, index } = setup([
       step("a", { hold: 1000, enter: (ctx) => ctx.wait(3000) }),
       step("b", { hold: 1000 }),
     ]);
     runner.start();
-    await advance(2999);
+    await advance(3999);
     expect(index()).toBe(0);
     await advance(1);
     expect(index()).toBe(1);
@@ -133,6 +133,27 @@ describe("createTourRunner", () => {
     expect(index()).toBe(0);
     await advance(1);
     expect(index()).toBe(1);
+  });
+
+  it("pauses without telling the step when the user takes over (their click decides)", async () => {
+    const events: string[] = [];
+    const { runner, status } = setup([
+      step("a", {
+        hold: 1000,
+        enter: async (ctx) => {
+          ctx.onPause(() => events.push("paused"));
+          ctx.onResume(() => events.push("resumed"));
+        },
+      }),
+    ]);
+    runner.start();
+    await advance(0);
+    runner.takeOver();
+    expect(status()).toBe("paused");
+    await advance(5000);
+    expect(status()).toBe("paused");
+    runner.resume();
+    expect(events).toEqual(["resumed"]);
   });
 
   it("freezes waits inside a step and tells the step when it pauses and resumes", async () => {

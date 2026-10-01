@@ -1,9 +1,9 @@
 /**
  * The guided tour's step runner: no React and no DOM, driven by an injectable scheduler.
  *
- * Steps run one after another. Every wait a step makes is pausable (a pause freezes the clock where it
- * is) and abortable (Next, Previous and Exit abort the step in flight, its timers with it). A step stays
- * on screen until its `enter()` has finished and, for a numeric hold, at least that long from its start.
+ * Steps run one after another: a step's `enter()` sets the app up (and may choreograph it), then the
+ * step holds for its `hold`. Every wait is pausable (a pause freezes the clock where it is) and abortable
+ * (Next, Previous and Exit abort the step in flight, its timers with it).
  */
 
 export interface Scheduler {
@@ -143,7 +143,7 @@ export function createPausableClock(scheduler: Scheduler): PausableClock {
 /** What a step spotlights: one `data-tour` selector, or several shown as one. */
 export type TourTarget = string | readonly string[];
 
-/** How long a step stays at least (ms, from its start), or "until-done": exactly as long as its enter(). */
+/** How long a step stays once its enter() is done (ms), or "until-done": exactly as long as its enter(). */
 export type Hold = number | "until-done";
 
 /** What a running step gets: the app it drives, and waits that pause and abort with the tour. */
@@ -207,6 +207,8 @@ export interface TourRunner {
   detail(): string | null;
   start(index?: number): void;
   pause(): void;
+  /** Pause because the user is using the app: the step's pause handlers don't run, so their click decides. */
+  takeOver(): void;
   resume(): void;
   toggle(): void;
   next(): void;
@@ -224,7 +226,7 @@ export interface RunnerOptions<App> {
   onEnd?: (reason: EndReason) => void;
 }
 
-const IDLE: TourSnapshot = { status: "idle", index: -1, say: null, target: null, entry: 0 };
+export const IDLE_SNAPSHOT: TourSnapshot = { status: "idle", index: -1, say: null, target: null, entry: 0 };
 
 export function createTourRunner<App>({
   steps,
@@ -236,7 +238,7 @@ export function createTourRunner<App>({
 }: RunnerOptions<App>): TourRunner {
   const clock = createPausableClock(scheduler);
   const listeners = new Set<() => void>();
-  let snapshot = IDLE;
+  let snapshot = IDLE_SNAPSHOT;
   let current: { controller: AbortController; ctx: StepContext<App> } | null = null;
   let pauseHandlers: (() => void)[] = [];
   let resumeHandlers: (() => void)[] = [];
@@ -315,10 +317,9 @@ export function createTourRunner<App>({
     update({ status: "running", index, say: null, target: step.target ?? null, entry: snapshot.entry + 1 });
 
     const hold = step.hold ?? 0;
-    Promise.all([
-      Promise.resolve().then(() => step.enter(ctx, controller.signal)),
-      typeof hold === "number" ? ctx.wait(hold) : undefined,
-    ])
+    Promise.resolve()
+      .then(() => step.enter(ctx, controller.signal))
+      .then(() => (typeof hold === "number" ? ctx.wait(hold) : undefined))
       .then(() => ctx.gate())
       .then(
         () => {
@@ -346,11 +347,11 @@ export function createTourRunner<App>({
 
   const active = () => snapshot.status === "running" || snapshot.status === "paused";
 
-  function pause() {
+  function pause(tellStep = true) {
     if (snapshot.status !== "running") return;
     clock.pause();
     update({ status: "paused" });
-    pauseHandlers.forEach((handler) => handler());
+    if (tellStep) pauseHandlers.forEach((handler) => handler());
   }
 
   function resume() {
@@ -377,7 +378,8 @@ export function createTourRunner<App>({
     start(index = 0) {
       enter(Math.min(Math.max(index, 0), steps.length - 1));
     },
-    pause,
+    pause: () => pause(),
+    takeOver: () => pause(false),
     resume,
     toggle() {
       if (snapshot.status === "running") pause();
