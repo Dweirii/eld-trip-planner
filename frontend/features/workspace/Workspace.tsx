@@ -42,16 +42,21 @@ export function Workspace({ initialTrip = null }: { initialTrip?: Trip | null })
     api.health().catch(() => undefined);
   }, []);
 
+  // While the guided tour runs, the map keeps the caption card's corner clear when it fits a route
+  // (not during the replay: then the card moves to the top, out of the playback bar's way).
+  const [touring, setTouring] = useState(false);
+
   // Move focus to the panel's heading when the panel changes (a plan succeeds, Edit trip,
-  // Back to results, New trip), but not on first load.
+  // Back to results, New trip), but not on first load, and not when the guided tour changes it:
+  // the tour narrates through its own live captions, so focus stays where the user left it.
   const headingRef = useRef<HTMLHeadingElement>(null);
   const view = showResults ? `results:${trip.id}` : trip ? "edit" : "form";
   const lastView = useRef(view);
   useEffect(() => {
     if (lastView.current === view) return;
     lastView.current = view;
-    headingRef.current?.focus();
-  }, [view]);
+    if (!touring) headingRef.current?.focus();
+  }, [view, touring]);
 
   // After planning here the URL becomes /trips/<id> via history.replaceState, so the router keeps
   // this page mounted. The logo links to "/": arriving back there always means a fresh planner.
@@ -73,10 +78,6 @@ export function Workspace({ initialTrip = null }: { initialTrip?: Trip | null })
     setPanelTab("itinerary");
     setLogDay(0);
   }
-
-  // While the guided tour runs, the map keeps the caption card's corner clear when it fits a route
-  // (not during the replay: then the card moves to the top, out of the playback bar's way).
-  const [touring, setTouring] = useState(false);
 
   const tour = useTourController(
     {

@@ -155,6 +155,18 @@ describe("Workspace", () => {
       await userEvent.click(within(tour).getByRole("button", { name: "Exit tour" }));
       expect(screen.queryByRole("region", { name: "Guided tour" })).not.toBeInTheDocument();
     });
+
+    it("leaves focus where it is when the tour brings up the results (its captions narrate instead)", async () => {
+      navigation.search = "tour=1&tourSpeed=20";
+      window.history.replaceState(null, "", "/?tour=1&tourSpeed=20");
+      render(<Workspace />);
+      // Next, step by step, to the results: the tour plans the trip itself.
+      for (let step = 0; step < 5; step++) fireEvent.keyDown(document.body, { key: "ArrowRight" });
+      const heading = await screen.findByRole("heading", { name: TITLE });
+      expect(within(screen.getByRole("region", { name: "Guided tour" })).getByText("6 / 16")).toBeInTheDocument();
+      expect(heading).not.toHaveFocus();
+      expect(document.activeElement).toBe(document.body);
+    });
   });
 
   describe("trip replay", () => {

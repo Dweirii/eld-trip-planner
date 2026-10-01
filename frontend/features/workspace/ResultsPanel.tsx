@@ -77,7 +77,12 @@ export const ResultsPanel = memo(function ResultsPanel({
     <div className="flex flex-col gap-3" data-tour="results">
       <div className="flex items-start gap-2">
         <div className="flex-1">
-          <h2 ref={headingRef} tabIndex={-1} className="rounded-sm text-[14px] font-extrabold leading-snug">
+          {/* Focused when these results appear: a highlight inside its own box, clear of the line below. */}
+          <h2
+            ref={headingRef}
+            tabIndex={-1}
+            className="-mx-1.5 rounded-md px-1.5 text-[14px] font-extrabold leading-snug focus-visible:bg-[#e6f3f3] focus-visible:shadow-[inset_3px_0_0_var(--color-teal)] focus-visible:outline-hidden"
+          >
             {title}
           </h2>
           <p className="text-[11px] text-muted">
