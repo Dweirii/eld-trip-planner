@@ -7,8 +7,27 @@
       "bbox": [-96.797, 32.7767, -87.6298, 41.8781],
       "properties": {
         "segments": [
-          {"distance": 297.1, "duration": 17100.0},
-          {"distance": 635.3, "duration": 38160.0}
+          {
+            "distance": 297.1,
+            "duration": 17100.0,
+            "steps": [
+              {"distance": 0.083, "duration": 10.7, "type": 11, "instruction": "Head south on South Federal Street", "name": "South Federal Street", "way_points": [0, 1]},
+              {"distance": 0.0, "duration": 0.0, "type": 13, "instruction": "Keep right", "name": "-", "way_points": [1, 1]},
+              {"distance": 0.494, "duration": 73.6, "type": 13, "instruction": "Keep right", "name": "-", "way_points": [1, 1]},
+              {"distance": 296.523, "duration": 17015.7, "type": 12, "instruction": "Keep left onto I 55", "name": "I 55", "way_points": [1, 2]},
+              {"distance": 0.0, "duration": 0.0, "type": 10, "instruction": "Arrive at South Tucker Boulevard, on the right", "name": "-", "way_points": [2, 2]}
+            ]
+          },
+          {
+            "distance": 635.3,
+            "duration": 38160.0,
+            "steps": [
+              {"distance": 0.582, "duration": 100.7, "type": 11, "instruction": "Head south on South Tucker Boulevard", "name": "South Tucker Boulevard", "way_points": [2, 2]},
+              {"distance": 33.384, "duration": 3227.0, "type": 12, "instruction": "Keep left onto Ozark Expressway, I 55", "name": "Ozark Expressway, I 55", "way_points": [2, 3]},
+              {"distance": 601.334, "duration": 34832.3, "type": 13, "instruction": "Keep right onto I 30, US 67", "name": "I 30, US 67", "way_points": [3, 4]},
+              {"distance": 0.0, "duration": 0.0, "type": 10, "instruction": "Arrive at your destination, on the right", "name": "-", "way_points": [4, 4]}
+            ]
+          }
         ],
         "summary": {"distance": 932.4, "duration": 55260.0},
         "way_points": [0, 2, 4]

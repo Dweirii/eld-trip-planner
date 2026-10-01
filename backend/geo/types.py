@@ -35,11 +35,22 @@ class Town:
 
 
 @dataclass(frozen=True, slots=True)
+class RouteStep:
+    """One turn-by-turn instruction: the manoeuvre, the road it puts you on, and how far it runs."""
+
+    instruction: str
+    road: str  # "" when the router has no name for it
+    miles: float
+    minutes: float
+
+
+@dataclass(frozen=True, slots=True)
 class RouteLeg:
-    """One leg between consecutive stops: road miles and drive minutes."""
+    """One leg between consecutive stops: road miles, drive minutes and the directions."""
 
     miles: float
     duration_min: float
+    steps: tuple[RouteStep, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,7 +64,14 @@ class Route:
     def to_dict(self) -> dict:
         """JSON-ready form, as stored in the route cache."""
         return {
-            "legs": [[leg.miles, leg.duration_min] for leg in self.legs],
+            "legs": [
+                [
+                    leg.miles,
+                    leg.duration_min,
+                    [[s.instruction, s.road, s.miles, s.minutes] for s in leg.steps],
+                ]
+                for leg in self.legs
+            ],
             "coordinates": [list(c) for c in self.coordinates],
             "waypoints": list(self.waypoints),
         }
@@ -62,7 +80,13 @@ class Route:
     def from_dict(cls, data: dict) -> "Route":
         """Inverse of ``to_dict``."""
         return cls(
-            legs=tuple(RouteLeg(miles, minutes) for miles, minutes in data["legs"]),
+            legs=tuple(_leg_from_list(leg) for leg in data["legs"]),
             coordinates=tuple((c[0], c[1]) for c in data["coordinates"]),
             waypoints=tuple(data["waypoints"]),
         )
+
+
+def _leg_from_list(item: list) -> RouteLeg:
+    miles, minutes, *rest = item
+    steps = rest[0] if rest else []  # payloads cached before steps existed have none
+    return RouteLeg(miles, minutes, tuple(RouteStep(*step) for step in steps))

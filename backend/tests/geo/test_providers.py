@@ -7,7 +7,7 @@ import pytest
 from geo.errors import RouteNotFound, UpstreamUnavailable
 from geo.providers.ors import OrsRouter
 from geo.providers.photon import PhotonGeocoder
-from geo.types import Place
+from geo.types import Place, Route, RouteStep
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -184,6 +184,57 @@ def test_ors_parses_legs_geometry_and_waypoints():
     assert body["radiuses"] == [-1, -1, -1]
     # ORS only returns the per-leg "segments" when instructions are on (checked against the live API).
     assert body["instructions"] is True
+
+
+def ors_route_with(payload: dict) -> Route:
+    router = OrsRouter(api_key="k", base_url="https://ors.test", client=client_returning(payload))
+    return router.route(POINTS)
+
+
+def test_ors_keeps_each_legs_turn_by_turn_steps():
+    first, second = ors_route_with(fixture("ors_route.json")).legs
+
+    assert first.steps[0] == RouteStep(
+        "Head south on South Federal Street", "South Federal Street", 0.083, 10.7 / 60
+    )
+    assert [s.instruction for s in second.steps] == [
+        "Head south on South Tucker Boulevard",
+        "Keep left onto Ozark Expressway, I 55",
+        "Keep right onto I 30, US 67",
+        "Arrive at your destination, on the right",
+    ]
+    for leg in (first, second):
+        assert sum(s.miles for s in leg.steps) == pytest.approx(leg.miles)
+        assert sum(s.minutes for s in leg.steps) == pytest.approx(leg.duration_min)
+
+
+def test_ors_steps_without_a_road_name_get_an_empty_road():
+    first = ors_route_with(fixture("ors_route.json")).legs[0]
+    assert [s.road for s in first.steps] == ["South Federal Street", "", "I 55", ""]
+
+
+def test_ors_drops_zero_distance_steps_but_keeps_each_legs_arrival():
+    first, second = ors_route_with(fixture("ors_route.json")).legs
+
+    assert [s.instruction for s in first.steps] == [
+        "Head south on South Federal Street",
+        "Keep right",  # the zero-distance "Keep right" before it is gone
+        "Keep left onto I 55",
+        "Arrive at South Tucker Boulevard, on the right",
+    ]
+    assert first.steps[-1].miles == 0 and first.steps[-1].minutes == 0
+    assert second.steps[-1].instruction == "Arrive at your destination, on the right"
+
+
+def test_ors_segments_without_steps_give_legs_without_steps():
+    payload = fixture("ors_route.json")
+    for segment in payload["features"][0]["properties"]["segments"]:
+        del segment["steps"]
+
+    route = ors_route_with(payload)
+
+    assert [leg.steps for leg in route.legs] == [(), ()]
+    assert [leg.miles for leg in route.legs] == [297.1, 635.3]
 
 
 @pytest.mark.parametrize(("status", "code"), [(404, 2010), (404, 2009), (400, 2004)])

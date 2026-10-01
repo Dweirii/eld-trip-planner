@@ -2,7 +2,7 @@
 
 import pytest
 
-from geo.types import Route, RouteLeg
+from geo.types import Route, RouteLeg, RouteStep
 from tests.fakes import FakeRouter
 from trips.services import _join
 
@@ -39,6 +39,17 @@ def test_join_offsets_the_second_legs_waypoints():
     assert joined.legs == (RouteLeg(10, 10), RouteLeg(20, 20))
     assert joined.coordinates == ((0, 0), (1, 1), (2, 2), (3, 3), (4, 4), (5, 5))
     assert joined.waypoints == (0, 2, 5)
+
+
+def test_join_carries_each_legs_steps_through():
+    head = (RouteStep("Head west on I-80", "I-80", 10, 10),)
+    tail = (RouteStep("Continue onto I-70", "I-70", 20, 20), RouteStep("Arrive", "", 0, 0))
+    first = Route((RouteLeg(10, 10, head),), ((0, 0), (1, 1)), (0, 1))
+    second = Route((RouteLeg(20, 20, tail),), ((1, 1), (2, 2)), (0, 1))
+
+    joined = _join(first, second)
+
+    assert [leg.steps for leg in joined.legs] == [head, tail]
 
 
 def test_very_long_trip_routes_each_leg_separately(client):
