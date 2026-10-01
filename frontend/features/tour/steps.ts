@@ -61,7 +61,7 @@ export const TIMING = {
 } as const;
 
 export const PLANNING_CAPTION = "Routing a heavy truck, then simulating every hour under 49 CFR Part 395…";
-export const RETRY_CAPTION = "The API is waking up. Retrying…";
+export const RETRY_CAPTION = "The routing service didn't answer. Retrying once…";
 
 function exampleTrip(): TripFormValues {
   const example = EXAMPLE_TRIPS.find((trip) => trip.id === "multi-day");
@@ -92,18 +92,32 @@ async function atForm(ctx: TourContext) {
   await app.waitFor((state) => !state.results && !state.pending, ctx.signal, since);
 }
 
-/** Type a place into its field, then set the example's exact place (coordinates too), so planning never waits on autocomplete. */
+/**
+ * Type a place into its field, then set the example's exact place (coordinates too), so planning never
+ * waits on autocomplete. Left mid-word (Next, Previous, Exit), the field gets back what it held before.
+ */
 async function typeInto(ctx: TourContext, key: LocationKey, place: LocationValue) {
   const field = tourTarget(`location-${FIELD_MARKERS[key]}`);
   ctx.spotlight(field);
   await revealInPanel(ctx, document.querySelector(field), TIMING.panelScroll);
   await ctx.wait(TIMING.beforeTyping);
-  await typeText({
-    text: place.label,
-    onType: (label) => setValues(ctx, { [key]: { label } }),
-    wait: ctx.wait,
-    reducedMotion: ctx.reducedMotion,
-  });
+  const committed = ctx.app.state.values[key];
+  let typed: LocationValue | null = null;
+  try {
+    await typeText({
+      text: place.label,
+      onType: (label) => {
+        typed = { label };
+        setValues(ctx, { [key]: typed });
+      },
+      wait: ctx.wait,
+      reducedMotion: ctx.reducedMotion,
+    });
+  } catch (error) {
+    // Unless the step that took over has set the field already.
+    if (typed !== null && ctx.app.state.values[key] === typed) setValues(ctx, { [key]: committed });
+    throw error;
+  }
   setValues(ctx, { [key]: { ...place } });
   await ctx.wait(TIMING.afterField);
 }

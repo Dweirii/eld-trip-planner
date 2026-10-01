@@ -114,6 +114,26 @@ describe("the guided tour's steps", () => {
     expect(app.state.values).toEqual(TOUR_TRIP);
   });
 
+  it("puts a half-typed field back when the tour is left mid-word, so the form is never left invalid", async () => {
+    const { app } = workspace();
+    const { runner } = run(["current"], app);
+    await advance(1000);
+    expect(app.state.values.current.label).toMatch(/^Ch/);
+    runner.exit();
+    await advance(0);
+    expect(app.state.values.current).toEqual({ label: "" });
+  });
+
+  it("lets the next step set the form when Next is pressed mid-word", async () => {
+    const { app } = workspace();
+    const { runner } = run(["current", "stops"], app);
+    await advance(1000);
+    runner.next();
+    await advance(TIMING.beforeTyping + 200);
+    expect(app.state.values.current).toEqual(TOUR_TRIP.current);
+    expect(app.state.values.pickup.label).toMatch(/^St/);
+  });
+
   it("plans the trip and says what it is doing until the results are in", async () => {
     const { app, plans } = workspace(["ok"], { values: TOUR_TRIP });
     const { runner } = run(["plan", "results"], app);

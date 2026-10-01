@@ -18,7 +18,11 @@ const fake = vi.hoisted(() => {
     handlers = new Map<string, Handler[]>();
     sources = new Map<string, FakeSource>();
     fitBounds = vi.fn();
-    resize = vi.fn();
+    // Like MapLibre: a resize fires movestart and moveend, with no originalEvent (the user didn't move it).
+    resize = vi.fn(() => {
+      this.emit("movestart", {});
+      this.emit("moveend", {});
+    });
     easeTo = vi.fn();
     project = vi.fn<(lngLat: [number, number]) => { x: number; y: number }>(() => ({ x: 0, y: 0 }));
     isMoving = vi.fn(() => false);
@@ -333,6 +337,18 @@ describe("RouteMap", () => {
     const { map } = setup();
     expect(map.resize).toHaveBeenCalled();
     expect(map.resize.mock.invocationCallOrder[0]).toBeLessThan(map.fitBounds.mock.invocationCallOrder[0]);
+  });
+
+  it("doesn't take its own resize before a fit for the user moving the map", () => {
+    const { map, rerender } = setup({ trip: null, preview: PREVIEW });
+    rerender({ trip: sampleTrip, preview: [] });
+    expect(map.resize).toHaveBeenCalledTimes(2);
+    Object.defineProperty(map.container, "clientWidth", { value: 1200, configurable: true });
+    Object.defineProperty(map.container, "clientHeight", { value: 800, configurable: true });
+    map.project.mockImplementation(([lng]) => (lng < -90 ? { x: 500, y: 700 } : { x: 900, y: 100 }));
+    // The replay still frames the route: no user move since the fit.
+    rerender({ trip: sampleTrip, preview: [], replay: { lngLat: [-87.6, 41.9], status: "driving" } });
+    expect(map.fitBounds).toHaveBeenCalledTimes(3);
   });
 
   it("keeps extra room clear at the bottom when fitting, if asked (the guided tour's captions)", () => {

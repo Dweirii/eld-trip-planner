@@ -17,12 +17,18 @@ test("the guided tour types the trip, plans it and walks through the results", a
 
   await expect(page.getByRole("combobox", { name: "Current location" })).toHaveValue("Chicago, IL");
 
-  const results = tour.getByText(/^972 miles and 2 log days/);
-  for (let press = 0; press < 12 && !(await results.isVisible()); press++) {
-    await page.keyboard.press("ArrowRight");
-    await page.waitForTimeout(300);
-  }
-  await expect(results).toBeVisible();
+  // Next, step by step, until the results caption: the tour plans the trip itself on the way.
+  await expect
+    .poll(
+      async () => {
+        const text = (await tour.textContent()) ?? "";
+        if (/972 miles and 2 log days/.test(text)) return "results";
+        if (!text.includes("Routing a heavy truck")) await page.keyboard.press("ArrowRight");
+        return text;
+      },
+      { intervals: [400], timeout: 20_000 },
+    )
+    .toBe("results");
   await expect(page.getByRole("heading", { name: "Chicago → St. Louis → Dallas" })).toBeVisible();
   await expect(page).toHaveURL(new RegExp(`/trips/${trip.id}$`));
 
