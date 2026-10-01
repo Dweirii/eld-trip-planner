@@ -29,7 +29,7 @@ export interface TourOverlayProps {
 const PAUSED = "Paused (press Space to continue)";
 
 /** Desktop: the map keeps this much more room at the bottom while the tour runs, for the caption card. */
-export const CAPTION_ROOM = 140;
+export const CAPTION_ROOM = 170;
 /** The card moves out of the way when this much of the spotlight's target is under it. */
 const DODGE_SHARE = 0.25;
 
@@ -52,10 +52,8 @@ export function TourOverlay(props: TourOverlayProps) {
   const dodge = useCallback((box: Box | null) => {
     const card = cardRef.current;
     if (!card) return;
-    const rect = card.getBoundingClientRect();
-    const { transform } = getComputedStyle(card);
-    const shift = transform && transform !== "none" ? new DOMMatrixReadOnly(transform).m42 : 0;
-    const home = { top: rect.top - shift, left: rect.left, width: rect.width, height: rect.height };
+    // Where the card sits when it hasn't moved: a fixed element's offsets ignore its translate.
+    const home = { top: card.offsetTop, left: card.offsetLeft, width: card.offsetWidth, height: card.offsetHeight };
     const covered = box !== null && coveredShare(box, home) > DODGE_SHARE;
     if (covered !== (card.dataset.dodge !== undefined)) {
       if (covered) card.dataset.dodge = "";
