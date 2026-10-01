@@ -94,10 +94,11 @@ export function ResultsPanel({ trip, selectedStopId, onSelectStop, onEdit, onNew
         items={tabs}
         selected={tab}
         onSelect={setTab}
-        className="flex gap-1 rounded-full bg-[#eef4f4] p-1"
+        className="flex gap-0.5 rounded-full bg-[#eef4f4] p-1"
+        // Four tabs share a ~300px panel: size each to its label and keep it on one line.
         tabClassName={(selected) =>
           clsx(
-            "flex-1 rounded-full px-2 py-1.5 text-[11.5px] font-bold",
+            "flex-auto whitespace-nowrap rounded-full px-1.5 py-1.5 text-[11px] font-bold",
             selected ? "bg-white text-text shadow-[0_1px_4px_rgb(4_59_75/0.12)]" : "text-[#4b6770]",
           )
         }
