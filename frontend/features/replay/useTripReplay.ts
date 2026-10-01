@@ -9,6 +9,7 @@ import {
   type ReplayState,
   type StopMark,
   announcement,
+  arrivalText,
   buildTimeline,
   clockAt,
   dayMarks,
@@ -17,6 +18,7 @@ import {
   stateDetail,
   stopMarks,
   stopSteps,
+  stretchText,
   totalMinutes,
   valueText,
 } from "./timeline";
@@ -42,8 +44,11 @@ export interface TripReplay extends Playback {
   zone: string;
   /** "mile 662" or "10-h rest at Adel, GA". */
   detail: string;
+  /** The scrubber's aria-valuetext: the exact minute when paused, the stretch while playing. */
   valueText: string;
+  /** For the live region: the stretch while playing, then the arrival once playback ends. */
   announcement: string;
+  arrival: string;
   days: DayMark[];
   stops: StopMark[];
   /** The rest are null unless the replay is on screen. */
@@ -82,8 +87,9 @@ export function useTripReplay(trip: Trip | null): TripReplay {
     clock,
     zone: trip?.home_time_zone.abbreviation ?? "",
     detail: trip ? stateDetail(trip, state) : "",
-    valueText: trip ? valueText(trip, clock, state) : "",
+    valueText: !trip ? "" : playback.playing ? stretchText(trip, clock, state) : valueText(trip, clock, state),
     announcement: trip ? announcement(trip, state) : "",
+    arrival: trip ? arrivalText(trip) : "",
     days,
     stops,
     truck: lngLat ? { lngLat, status: state.status } : null,

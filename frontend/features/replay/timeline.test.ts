@@ -4,6 +4,7 @@ import type { Stop, Trip } from "@/lib/api/types";
 import {
   type Interval,
   announcement,
+  arrivalText,
   buildTimeline,
   clockAt,
   dayMarks,
@@ -13,6 +14,7 @@ import {
   stateDetail,
   stopMarks,
   stopSteps,
+  stretchText,
   totalMinutes,
   valueText,
 } from "./timeline";
@@ -235,6 +237,19 @@ describe("describing the state", () => {
     expect(announcement(sampleTrip, stateAt(timeline, 10))).toBe("Driving to St. Louis, MO");
     expect(announcement(sampleTrip, stateAt(timeline, 1000))).toBe("Sleeper berth: 10-h rest at Jasper, AR");
     expect(announcement(sampleTrip, stateAt(timeline, 1785))).toBe("On duty (not driving): Dropoff at Dallas, TX");
+  });
+
+  it("announces the arrival at the last stop", () => {
+    expect(arrivalText(sampleTrip)).toBe("Arrived at Dallas, TX");
+  });
+
+  it("reads a playing scrubber by stretch, so it only changes when its words do", () => {
+    const read = (t: number) => stretchText(sampleTrip, clockAt(sampleTrip, t), stateAt(timeline, t));
+    expect(read(10)).toBe("Thu, Oct 1: Driving to St. Louis, MO");
+    expect(read(300)).toBe(read(10));
+    expect(read(360)).toBe("Thu, Oct 1: On duty (not driving), Pickup at St. Louis, MO");
+    expect(read(1000)).toBe("Thu, Oct 1: Sleeper berth, 10-h rest at Jasper, AR");
+    expect(read(1100)).toBe("Fri, Oct 2: Sleeper berth, 10-h rest at Jasper, AR");
   });
 
   it("reads the scrubber position as date, time, status and detail", () => {

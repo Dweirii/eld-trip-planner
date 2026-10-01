@@ -10,9 +10,19 @@ function Harness() {
 }
 
 const frames: FrameRequestCallback[] = [];
+let now = 0;
+
+/** Runs animation frames 20 ms apart for `ms` of real time. */
+function runFrames(ms: number) {
+  for (let elapsed = 0; elapsed <= ms; elapsed += 20) {
+    now += 20;
+    act(() => frames.splice(0).forEach((callback) => callback(now)));
+  }
+}
 
 beforeEach(() => {
   frames.length = 0;
+  now = 0;
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => frames.push(callback));
   vi.stubGlobal("cancelAnimationFrame", vi.fn());
   vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false })));
@@ -55,6 +65,7 @@ describe("PlaybackBar", () => {
   it("scrubs in 15-minute steps and reads the position out", async () => {
     render(<Harness />);
     await userEvent.click(screen.getByRole("button", { name: "Play trip" }));
+    await userEvent.click(screen.getByRole("button", { name: "Pause trip" }));
     expect(slider()).toHaveAttribute("min", "0");
     expect(slider()).toHaveAttribute("max", "1785");
     expect(slider()).toHaveAttribute("step", "15");
@@ -101,7 +112,36 @@ describe("PlaybackBar", () => {
     expect(play).toHaveFocus();
 
     await userEvent.click(play);
-    expect(slider()).toHaveAttribute("aria-valuetext", "Thu, Oct 1, 06:00 CDT: Driving, mile 0");
+    expect(slider()).toHaveAttribute("aria-valuetext", "Thu, Oct 1: Driving to St. Louis, MO");
+  });
+
+  it("while playing, reads the slider by stretch so a focused slider isn't re-read every frame", async () => {
+    render(<Harness />);
+    await userEvent.click(screen.getByRole("button", { name: "Play trip" }));
+    const before = slider().getAttribute("aria-valuetext");
+    runFrames(2000); // about 150 trip-minutes, still on the way to St. Louis
+    expect(screen.getByText(/· 0[78]:\d\d CDT$/)).toBeInTheDocument(); // the visible clock moved on
+    expect(slider()).toHaveAttribute("aria-valuetext", before!);
+    expect(before).toBe("Thu, Oct 1: Driving to St. Louis, MO");
+    runFrames(3000);
+    expect(slider()).toHaveAttribute("aria-valuetext", "Thu, Oct 1: On duty (not driving), Pickup at St. Louis, MO");
+  });
+
+  it("announces the arrival once playback reaches the end, but not when scrubbed there", async () => {
+    const { container } = render(<Harness />);
+    const live = container.querySelector("[aria-live=polite]");
+    await userEvent.click(screen.getByRole("button", { name: "Play trip" }));
+    await userEvent.click(screen.getByRole("button", { name: "Pause trip" }));
+    fireEvent.change(slider(), { target: { value: "1785" } });
+    expect(live).toBeEmptyDOMElement();
+
+    fireEvent.change(slider(), { target: { value: "1740" } });
+    await userEvent.click(screen.getByRole("button", { name: "Play trip" }));
+    runFrames(1000);
+    expect(screen.getByRole("button", { name: "Play trip" })).toBeInTheDocument();
+    expect(live).toHaveTextContent("Arrived at Dallas, TX");
+    fireEvent.change(slider(), { target: { value: "900" } });
+    expect(live).toBeEmptyDOMElement();
   });
 
   it("announces each new stretch of the trip while playing", async () => {
@@ -123,9 +163,9 @@ describe("PlaybackBar", () => {
     fireEvent.pointerDown(slider());
     expect(button).toHaveAccessibleName("Play trip");
     fireEvent.change(slider(), { target: { value: "900" } });
+    expect(slider()).toHaveAttribute("aria-valuetext", expect.stringContaining("Thu, Oct 1, 21:00 CDT"));
     fireEvent.pointerUp(window);
     expect(button).toHaveAccessibleName("Pause trip");
-    expect(slider()).toHaveAttribute("aria-valuetext", expect.stringContaining("Thu, Oct 1, 21:00 CDT"));
 
     fireEvent.pointerDown(slider());
     fireEvent.change(slider(), { target: { value: "1785" } });

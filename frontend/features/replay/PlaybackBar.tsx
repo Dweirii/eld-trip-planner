@@ -114,9 +114,9 @@ export function PlaybackBar({ replay }: { replay: TripReplay }) {
           </>
         )}
       </div>
-      {/* Mounted from the start so screen readers announce changes; only while playing. */}
+      {/* Mounted from the start so screen readers announce changes: each stretch while playing, then the arrival. */}
       <p aria-live="polite" className="sr-only">
-        {playing ? replay.announcement : ""}
+        {playing ? replay.announcement : replay.ended ? replay.arrival : ""}
       </p>
     </div>
   );

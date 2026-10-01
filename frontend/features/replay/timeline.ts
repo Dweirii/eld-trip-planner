@@ -242,6 +242,22 @@ export function announcement(trip: TripStops, state: ReplayState): string {
   return `${STATUS_NAMES[state.status]}: ${stateDetail(trip, state)}`;
 }
 
+/** Read out once when playback reaches the end: "Arrived at Dallas, TX". */
+export function arrivalText(trip: TripStops): string {
+  const last = trip.stops.at(-1);
+  return last ? `Arrived at ${last.place}` : "";
+}
+
+/**
+ * The scrubber's aria-valuetext while playing: the day and the stretch ("Thu, Oct 1: Driving to St. Louis,
+ * MO"), with no clock or mile, so a focused slider is re-read when the stretch changes, not every frame.
+ */
+export function stretchText(trip: TripStops, clock: Clock, state: ReplayState): string {
+  const what =
+    state.kind === "drive" ? announcement(trip, state) : `${STATUS_NAMES[state.status]}, ${stateDetail(trip, state)}`;
+  return `${clock.dateLabel}: ${what}`;
+}
+
 /** The scrubber's aria-valuetext: "Fri, Oct 2, 09:45 EDT: Driving, mile 662". */
 export function valueText(trip: Pick<Trip, "stops" | "home_time_zone">, clock: Clock, state: ReplayState): string {
   const zone = trip.home_time_zone.abbreviation;

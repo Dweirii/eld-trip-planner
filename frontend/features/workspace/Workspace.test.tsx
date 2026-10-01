@@ -168,7 +168,7 @@ describe("Workspace", () => {
       expect(screen.queryByText("Now")).not.toBeInTheDocument();
 
       await userEvent.click(screen.getByRole("button", { name: "Play trip" }));
-      expect(slider()).toHaveAttribute("aria-valuetext", "Thu, Oct 1, 06:00 CDT: Driving, mile 0");
+      expect(slider()).toHaveAttribute("aria-valuetext", "Thu, Oct 1: Driving to St. Louis, MO"); // back at the start
       await userEvent.click(screen.getByRole("button", { name: "New trip" }));
       expect(screen.queryByRole("group", { name: "Trip replay" })).not.toBeInTheDocument();
     });

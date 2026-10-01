@@ -24,11 +24,24 @@ function run(ms: number) {
   for (let elapsed = 0; elapsed < ms; elapsed += 20) frame(20);
 }
 
+/** A prefers-reduced-motion media query the test can flip, telling its listeners like a browser would. */
 function reducedMotion(reduce: boolean) {
+  const listeners = new Set<() => void>();
+  const query = {
+    matches: reduce,
+    addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
+    removeEventListener: (_type: string, listener: () => void) => listeners.delete(listener),
+  };
   vi.stubGlobal(
     "matchMedia",
-    vi.fn((query: string) => ({ matches: reduce && query.includes("prefers-reduced-motion") })),
+    vi.fn((media: string) => (media.includes("prefers-reduced-motion") ? query : { matches: false })),
   );
+  return {
+    set(next: boolean) {
+      query.matches = next;
+      act(() => listeners.forEach((listener) => listener()));
+    },
+  };
 }
 
 function setup(total = TOTAL, resetKey: unknown = "trip-1") {
@@ -57,7 +70,7 @@ afterEach(() => {
 describe("usePlayback", () => {
   it("starts paused, at the start, not yet in use", () => {
     const { result } = setup();
-    expect(result.current).toMatchObject({ playing: false, t: 0, active: false, speed: 1 });
+    expect(result.current).toMatchObject({ playing: false, t: 0, active: false, ended: false, speed: 1 });
   });
 
   it("plays the whole trip in about 24 seconds, whatever its length", () => {
@@ -157,6 +170,64 @@ describe("usePlayback", () => {
     expect(result.current).toMatchObject({ t: TOTAL, playing: false });
     act(() => vi.advanceTimersByTime(5000));
     expect(result.current.t).toBe(TOTAL);
+  });
+
+  it("steps faster or slower with the speed under reduced motion", () => {
+    reducedMotion(true);
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    const { result } = setup();
+    act(() => result.current.cycleSpeed()); // 2×
+    act(() => result.current.play());
+    act(() => vi.advanceTimersByTime(500));
+    expect(result.current.t).toBe(300);
+    act(() => result.current.cycleSpeed()); // ½×
+    act(() => vi.advanceTimersByTime(1999));
+    expect(result.current.t).toBe(300);
+    act(() => vi.advanceTimersByTime(1));
+    expect(result.current.t).toBe(900);
+  });
+
+  it("follows a change to the reduced-motion setting while playing", () => {
+    const media = reducedMotion(false);
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    const { result } = setup();
+    act(() => result.current.play());
+    frame(0);
+    run(1000);
+    expect(raf.callbacks.size).toBe(1);
+
+    media.set(true);
+    expect(raf.callbacks.size).toBe(0);
+    act(() => vi.advanceTimersByTime(1000));
+    expect(result.current.t).toBe(300);
+
+    media.set(false);
+    act(() => vi.advanceTimersByTime(5000));
+    expect(result.current.t).toBe(300);
+    frame(0);
+    run(1000);
+    expect(result.current.t).toBeCloseTo(360, 6);
+  });
+
+  it("flags an ending reached by playing, until the replay moves again", () => {
+    const { result } = setup();
+    act(() => result.current.seek(TOTAL));
+    expect(result.current.ended).toBe(false); // scrubbed there, not played there
+    act(() => result.current.play());
+    frame(0);
+    run(30_000);
+    expect(result.current).toMatchObject({ playing: false, ended: true });
+    act(() => result.current.seek(600));
+    expect(result.current.ended).toBe(false);
+    act(() => result.current.seek(TOTAL - 15));
+    act(() => result.current.play());
+    frame(0);
+    run(2_000);
+    expect(result.current.ended).toBe(true);
+    act(() => result.current.play());
+    expect(result.current).toMatchObject({ ended: false, t: 0 });
+    act(() => result.current.reset());
+    expect(result.current.ended).toBe(false);
   });
 
   it("resets when the trip changes", () => {
