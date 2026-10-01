@@ -47,6 +47,21 @@ export function Workspace({ initialTrip = null }: { initialTrip?: Trip | null })
   const headingRef = useRef<HTMLHeadingElement>(null);
   const view = showResults ? `results:${trip.id}` : trip ? "edit" : "form";
   const lastView = useRef(view);
+  useEffect(() => {
+    if (lastView.current === view) return;
+    lastView.current = view;
+    headingRef.current?.focus();
+  }, [view]);
+
+  // After planning here the URL becomes /trips/<id> via history.replaceState, so the router keeps
+  // this page mounted. The logo links to "/": arriving back there always means a fresh planner.
+  const pathname = usePathname();
+  const lastPathname = useRef(pathname);
+  useEffect(() => {
+    const previous = lastPathname.current;
+    lastPathname.current = pathname;
+    if (pathname === "/" && previous !== "/" && trip) reset();
+  }, [pathname, trip, reset]);
 
   // The results' tab and log day live here so the guided tour can set them. Each time the results
   // appear (a new plan, Back to results) they open on the itinerary and Day 1.
@@ -89,21 +104,6 @@ export function Workspace({ initialTrip = null }: { initialTrip?: Trip | null })
       setReplaySpeed: replay.setSpeed,
     },
   );
-  useEffect(() => {
-    if (lastView.current === view) return;
-    lastView.current = view;
-    headingRef.current?.focus();
-  }, [view]);
-
-  // After planning here the URL becomes /trips/<id> via history.replaceState, so the router keeps
-  // this page mounted. The logo links to "/": arriving back there always means a fresh planner.
-  const pathname = usePathname();
-  const lastPathname = useRef(pathname);
-  useEffect(() => {
-    const previous = lastPathname.current;
-    lastPathname.current = pathname;
-    if (pathname === "/" && previous !== "/" && trip) reset();
-  }, [pathname, trip, reset]);
 
   return (
     <TourControllerContext value={tour}>
