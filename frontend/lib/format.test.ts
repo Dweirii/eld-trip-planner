@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cityOf,
   clockTime,
@@ -11,10 +11,7 @@ import {
   shortDate,
 } from "./format";
 
-const originalTz = process.env.TZ;
-afterEach(() => {
-  process.env.TZ = originalTz;
-});
+afterEach(() => vi.unstubAllEnvs());
 
 describe("format", () => {
   it("reads clock time and date straight from home-terminal ISO strings", () => {
@@ -23,10 +20,10 @@ describe("format", () => {
   });
 
   it("does not depend on the browser's time zone", () => {
-    process.env.TZ = "Asia/Karachi";
+    vi.stubEnv("TZ", "Asia/Karachi");
     expect(clockTime("2026-10-01T23:30:00-05:00")).toBe("23:30");
     expect(shortDate("2026-10-01")).toBe("Thu, Oct 1");
-    process.env.TZ = "Pacific/Auckland";
+    vi.stubEnv("TZ", "Pacific/Auckland");
     expect(shortDate("2026-10-01")).toBe("Thu, Oct 1");
   });
 
