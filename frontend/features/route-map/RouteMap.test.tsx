@@ -328,6 +328,18 @@ describe("RouteMap", () => {
     });
   });
 
+  it("keeps extra room clear at the bottom when fitting, if asked (the guided tour's captions)", () => {
+    const { map } = setup({ bottomInset: 140 });
+    expect(map.fitBounds.mock.calls[0][1]).toMatchObject({ padding: { top: 64, right: 64, bottom: 204, left: 390 } });
+  });
+
+  it("marks each stop's pin and popup with the stop's id", () => {
+    setup();
+    expect(markerFor("s5")).toHaveAttribute("data-stop-id", "s5");
+    const popup = fake.FakePopup.instances.find((instance) => (instance.content as HTMLElement).dataset.stopId === "s5");
+    expect(popup).toBeDefined();
+  });
+
   it("names the GeoNames licence in the map credits", () => {
     const { map } = setup();
     const credits = map.addControl.mock.calls.map(

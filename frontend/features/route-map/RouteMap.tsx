@@ -64,9 +64,12 @@ interface Padding {
 
 const isDesktop = () => window.matchMedia("(min-width: 1024px)").matches;
 
-/** Leave room for the floating panel (desktop) or the bottom sheet (mobile) when fitting a route. */
-function panelPadding(container: HTMLElement): Padding {
-  if (isDesktop()) return { top: 64, right: 64, bottom: 64, left: 390 };
+/**
+ * Leave room for the floating panel (desktop) or the bottom sheet (mobile) when fitting a route, and on
+ * desktop for anything else the workspace keeps at the bottom (`bottomInset`).
+ */
+function panelPadding(container: HTMLElement, bottomInset = 0): Padding {
+  if (isDesktop()) return { top: 64, right: 64, bottom: 64 + bottomInset, left: 390 };
   // Top: clear of the map credits, which start expanded on small screens. Bottom: clear of the sheet and
   // of the "Play trip" and "Legend" buttons that sit just above it.
   return { top: 80, right: 32, bottom: Math.round(container.clientHeight * 0.62) + 40, left: 32 };
@@ -79,8 +82,8 @@ const PAN_EVERY_MS = 2_000;
 const USER_MOVE_GRACE_MS = 4_000;
 
 /** Where the truck must stay: clear of the panel or sheet, the credits and the playback bar. */
-function replayViewport(container: HTMLElement): Padding {
-  const padding = panelPadding(container);
+function replayViewport(container: HTMLElement, bottomInset = 0): Padding {
+  const padding = panelPadding(container, bottomInset);
   return { ...padding, bottom: padding.bottom + PLAYBACK_BAR_CLEARANCE[isDesktop() ? "desktop" : "mobile"] };
 }
 
@@ -129,12 +132,12 @@ interface CameraClock {
 }
 
 /** The part of the map the truck should stay in, in container pixels (null before layout). */
-function freeArea(map: maplibregl.Map) {
+function freeArea(map: maplibregl.Map, bottomInset: number) {
   const container = map.getContainer();
   const width = container.clientWidth;
   const height = container.clientHeight;
   if (!width || !height) return null;
-  const padding = replayViewport(container);
+  const padding = replayViewport(container, bottomInset);
   const left = padding.left;
   const top = padding.top;
   const right = Math.max(left, width - padding.right);
@@ -150,8 +153,13 @@ function freeArea(map: maplibregl.Map) {
  * As the replay starts, fit the whole route above the playback bar, so the truck can drive it without
  * the map moving. Only if part of it is hidden, and only if the user hasn't moved the map since it was fitted.
  */
-function frameRoute(map: maplibregl.Map, bounds: [LngLat, LngLat] | null, clock: CameraClock): boolean {
-  const area = freeArea(map);
+function frameRoute(
+  map: maplibregl.Map,
+  bounds: [LngLat, LngLat] | null,
+  clock: CameraClock,
+  bottomInset: number,
+): boolean {
+  const area = freeArea(map, bottomInset);
   if (!bounds || !area || clock.userMovedAt > clock.fittedAt) return false;
   const [[west, south], [east, north]] = bounds;
   const corners: LngLat[] = [
@@ -167,10 +175,10 @@ function frameRoute(map: maplibregl.Map, bounds: [LngLat, LngLat] | null, clock:
 }
 
 /** Ease the map so the truck sits in the middle of the free area, if it has left it (throttled; yields to the user). */
-function keepInView(map: maplibregl.Map, lngLat: LngLat, clock: CameraClock) {
+function keepInView(map: maplibregl.Map, lngLat: LngLat, clock: CameraClock, bottomInset: number) {
   const now = performance.now();
   if (now - clock.lastPan < PAN_EVERY_MS || now - clock.userMovedAt < USER_MOVE_GRACE_MS) return;
-  const area = freeArea(map);
+  const area = freeArea(map, bottomInset);
   if (!area || map.isMoving() || area.contains(lngLat)) return;
   clock.lastPan = now;
   const { width, height, left, right, top, bottom } = area;
@@ -208,10 +216,19 @@ export interface RouteMapProps {
   onSelectStop: (id: string) => void;
   /** Trip replay: where the truck is and what the driver is doing (null: no truck). */
   replay?: { lngLat: [number, number]; status: DutyStatus } | null;
+  /** Desktop: room to keep clear at the bottom when fitting, in px (the guided tour's caption card). */
+  bottomInset?: number;
 }
 
 /** MapLibre map: the planned route and its stops, or a dashed preview while the form is filled in. */
-export default function RouteMap({ trip, preview, selectedStopId, onSelectStop, replay = null }: RouteMapProps) {
+export default function RouteMap({
+  trip,
+  preview,
+  selectedStopId,
+  onSelectStop,
+  replay = null,
+  bottomInset = 0,
+}: RouteMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef(new Map<string, MarkerEntry>());
@@ -235,6 +252,12 @@ export default function RouteMap({ trip, preview, selectedStopId, onSelectStop, 
   useEffect(() => {
     onSelectRef.current = onSelectStop;
   }, [onSelectStop]);
+
+  // Read when the map fits (a new trip or preview), so changing it never moves the map by itself.
+  const insetRef = useRef(bottomInset);
+  useEffect(() => {
+    insetRef.current = bottomInset;
+  }, [bottomInset]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -376,7 +399,11 @@ export default function RouteMap({ trip, preview, selectedStopId, onSelectStop, 
     if (bounds && fitKey !== lastFitRef.current) {
       lastFitRef.current = fitKey;
       cameraRef.current.fittedAt = performance.now();
-      map.fitBounds(bounds, { padding: panelPadding(map.getContainer()), maxZoom: 9, duration: 600 });
+      map.fitBounds(bounds, {
+        padding: panelPadding(map.getContainer(), insetRef.current),
+        maxZoom: 9,
+        duration: 600,
+      });
     }
 
     return () => {
@@ -406,9 +433,9 @@ export default function RouteMap({ trip, preview, selectedStopId, onSelectStop, 
     if (truckRef.current) truckRef.current.move(lngLat, truckStatus);
     else {
       truckRef.current = new Truck(map, lngLat, truckStatus);
-      if (frameRoute(map, routeBoundsRef.current, cameraRef.current)) return;
+      if (frameRoute(map, routeBoundsRef.current, cameraRef.current, insetRef.current)) return;
     }
-    keepInView(map, lngLat, cameraRef.current);
+    keepInView(map, lngLat, cameraRef.current, insetRef.current);
   }, [truckLng, truckLat, truckStatus]);
 
   return (

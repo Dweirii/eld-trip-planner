@@ -23,9 +23,9 @@ export type TourContext = StepContext<TourController>;
 export const TIMING = {
   intro: 5000,
   /** The spotlight lands on a field before the first keystroke. */
-  beforeTyping: 400,
+  beforeTyping: 700,
   /** A typed field stays in the spotlight before the next one. */
-  afterField: 700,
+  afterField: 900,
   cycleSweep: 1200,
   cycle: 2000,
   /** "Plan the trip." is read before the button is pressed. */

@@ -1,8 +1,8 @@
 "use client";
 
 import clsx from "clsx";
-import { type ReactNode, useEffect, useRef } from "react";
-import { type Box, easeInOut, targetBox, visibleElement } from "./dom";
+import { type ReactNode, useCallback, useEffect, useEffectEvent, useRef } from "react";
+import { type Box, easeInOut, targetBox, targetElements, visibleBox } from "./dom";
 import type { TourTarget } from "./runner";
 import { TOUR_UI_ATTRIBUTE } from "./useTour";
 
@@ -28,9 +28,41 @@ export interface TourOverlayProps {
 
 const PAUSED = "Paused (press Space to continue)";
 
+/** Desktop: the map keeps this much more room at the bottom while the tour runs, for the caption card. */
+export const CAPTION_ROOM = 140;
+/** Desktop: the card leaves its corner for the top of the map when the spotlight's target is this much under it. */
+const DODGE_SHARE = 0.25;
+
+const isDesktop = () => window.matchMedia?.("(min-width: 1024px)")?.matches ?? false;
+
+/** The share of `target` that `card` covers. */
+function coveredShare(target: Box, card: Box): number {
+  const width = Math.min(target.left + target.width, card.left + card.width) - Math.max(target.left, card.left);
+  const height = Math.min(target.top + target.height, card.top + card.height) - Math.max(target.top, card.top);
+  if (width <= 0 || height <= 0) return 0;
+  return (width * height) / (target.width * target.height);
+}
+
 /** The guided tour on screen: the spotlight, and a caption card with its controls. Never printed. */
 export function TourOverlay(props: TourOverlayProps) {
   const { index, total, entry, caption, detail, paused, captions, target, raised = false } = props;
+  const cardRef = useRef<HTMLElement>(null);
+
+  // Desktop: when the spotlight's target sits under the card (a log sheet's remarks), the card moves to
+  // the top of the screen until the spotlight moves on.
+  const dodge = useCallback((box: Box | null) => {
+    const card = cardRef.current;
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    const { transform } = getComputedStyle(card);
+    const shift = transform && transform !== "none" ? new DOMMatrixReadOnly(transform).m42 : 0;
+    const home = { top: rect.top - shift, left: rect.left, width: rect.width, height: rect.height };
+    const covered = box !== null && isDesktop() && coveredShare(box, home) > DODGE_SHARE;
+    if (covered !== (card.dataset.dodge !== undefined)) {
+      if (covered) card.dataset.dodge = "";
+      else delete card.dataset.dodge;
+    }
+  }, []);
   const counter = (
     <p className="shrink-0 text-[11.5px] font-bold tabular-nums text-muted">
       <span aria-hidden="true">{`${index + 1} / ${total}`}</span>
@@ -40,13 +72,18 @@ export function TourOverlay(props: TourOverlayProps) {
 
   return (
     <div {...{ [TOUR_UI_ATTRIBUTE]: "" }} className="print:hidden">
-      <Spotlight target={target} />
+      <Spotlight target={target} onTarget={dodge} />
       <section
+        ref={cardRef}
         aria-label="Guided tour"
+        data-tour-card=""
+        data-docked={raised || undefined}
         className={clsx(
-          "animate-bar-in fixed inset-x-3 top-[3.75rem] z-[70] mx-auto transition-transform duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none",
+          "animate-bar-in fixed inset-x-3 top-[3.75rem] z-[70] mx-auto transition-transform duration-[650ms] ease-[cubic-bezier(0.45,0,0.2,1)] motion-reduce:transition-none",
+          // Desktop: bottom left over the map, level with the panel's bottom edge; docked or dodging,
+          // at the top of the map instead (16px under the header).
           "lg:inset-x-auto lg:top-auto lg:bottom-[5.5rem] lg:left-[372px] lg:mx-0",
-          raised && "lg:-translate-y-[8.75rem]",
+          "lg:data-[docked]:translate-y-[calc(-100svh+100%+9.5rem)] lg:data-[dodge]:translate-y-[calc(-100svh+100%+9.5rem)]",
           captions
             ? "max-w-[420px] rounded-2xl bg-white px-4 pb-3 pt-3.5 shadow-[0_14px_44px_rgb(4_59_75/0.28)] lg:w-[400px]"
             : "w-fit rounded-full bg-white p-1 shadow-[0_8px_28px_rgb(4_59_75/0.26)]",
@@ -209,14 +246,17 @@ function lerp(from: number, to: number, progress: number) {
   return from + (to - from) * progress;
 }
 
-/** The ring around a target: padded, with corners that follow the target's own. */
-function ringFor(box: Box, element: Element | null): Box & { radius: number } {
+/** The ring around a target: padded, with corners that follow its own (a pill or pin stays round). */
+function ringFor(box: Box, target: TourTarget): Box & { radius: number } {
   const small = Math.min(box.width, box.height) < 40;
   const pad = small ? SMALL_PADDING : PADDING;
   const ring = { top: box.top - pad, left: box.left - pad, width: box.width + 2 * pad, height: box.height + 2 * pad };
-  const own = element ? Number.parseFloat(getComputedStyle(element).borderTopLeftRadius) || 0 : 0;
-  const round = own >= Math.min(box.width, box.height) / 2;
-  const radius = round ? Math.min(ring.width, ring.height) / 2 : Math.min(Math.max(own + pad, 12), 20);
+  const elements = targetElements(target).filter((element) => visibleBox(element) !== null);
+  // Several elements in one ring (a tab bar and its panel, a pin and its popup) get plain rounded corners.
+  const own =
+    elements.length === 1 ? Number.parseFloat(getComputedStyle(elements[0]).borderTopLeftRadius) || 0 : 0;
+  const round = elements.length === 1 && own >= Math.min(box.width, box.height) / 2;
+  const radius = round ? Math.min(ring.width, ring.height) / 2 : Math.min(Math.max(own + pad, 14), 20);
   return { ...ring, radius };
 }
 
@@ -225,8 +265,9 @@ function ringFor(box: Box, element: Element | null): Box & { radius: number } {
  * dim). It glides between targets and follows them every frame as the page scrolls, the window resizes
  * or the map moves. It never takes a pointer event.
  */
-function Spotlight({ target }: { target: TourTarget | null }) {
+function Spotlight({ target, onTarget }: { target: TourTarget | null; onTarget?: (box: Box | null) => void }) {
   const ringRef = useRef<HTMLDivElement>(null);
+  const report = useEffectEvent((box: Box | null) => onTarget?.(box));
   const drawn = useRef<(Box & { radius: number }) | null>(null);
   const key = target === null ? "" : JSON.stringify(target);
 
@@ -244,13 +285,14 @@ function Spotlight({ target }: { target: TourTarget | null }) {
     const tick = (now: number) => {
       frame = requestAnimationFrame(tick);
       const box = selectors ? targetBox(selectors) : null;
+      report(box);
       if (!box) {
         missingSince ??= now;
         if (!selectors || now - missingSince > MISSING_GRACE_MS) ring.style.opacity = "0";
         return;
       }
       missingSince = null;
-      const to = ringFor(box, selectors ? visibleElement(selectors) : null);
+      const to = ringFor(box, selectors as TourTarget);
       startedAt ??= now;
       const progress = !from || reduce ? 1 : easeInOut(Math.min((now - startedAt) / MOVE_MS, 1));
       const next =

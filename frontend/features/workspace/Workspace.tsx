@@ -9,6 +9,7 @@ import { PlaybackBar } from "@/features/replay/PlaybackBar";
 import { useTripReplay } from "@/features/replay/useTripReplay";
 import { TourControllerContext, useTourController } from "@/features/tour/controller";
 import { Tour } from "@/features/tour/Tour";
+import { CAPTION_ROOM } from "@/features/tour/TourOverlay";
 import { type PreviewPoint, previewPoints } from "@/features/trip-form/model";
 import { TripForm } from "@/features/trip-form/TripForm";
 import { api } from "@/lib/api/client";
@@ -57,6 +58,10 @@ export function Workspace({ initialTrip = null }: { initialTrip?: Trip | null })
     setPanelTab("itinerary");
     setLogDay(0);
   }
+
+  // While the guided tour runs, the map keeps the caption card's corner clear when it fits a route
+  // (not during the replay: then the card moves to the top, out of the playback bar's way).
+  const [touring, setTouring] = useState(false);
 
   const tour = useTourController(
     {
@@ -162,6 +167,7 @@ export function Workspace({ initialTrip = null }: { initialTrip?: Trip | null })
             selectedStopId={selectedStopId}
             onSelectStop={planner.selectStop}
             replay={replay.truck}
+            bottomInset={touring && !replay.active ? CAPTION_ROOM : 0}
           />
           {showResults && <PlaybackBar replay={replay} />}
           <PlanningOverlay pending={planner.pending} />
@@ -180,7 +186,7 @@ export function Workspace({ initialTrip = null }: { initialTrip?: Trip | null })
           />
         )}
         <Suspense fallback={null}>
-          <Tour raised={showResults && replay.active} />
+          <Tour raised={showResults && replay.active} onActiveChange={setTouring} />
         </Suspense>
       </main>
     </TourControllerContext>
