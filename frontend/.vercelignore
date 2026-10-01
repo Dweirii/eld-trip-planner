@@ -1,0 +1,7 @@
+# Keep local-only files out of `vercel deploy` uploads.
+.env*.local
+.next/
+node_modules/
+public/maplibre/
+test-results/
+playwright-report/

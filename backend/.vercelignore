@@ -1,9 +1,10 @@
-.venv
+# Keep local-only files out of `vercel deploy` uploads.
 .env
+.env.*
+!.env.example
+.venv/
 db.sqlite3
-__pycache__
-.pytest_cache
-.ruff_cache
-.hypothesis
-tests
-staticfiles
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
