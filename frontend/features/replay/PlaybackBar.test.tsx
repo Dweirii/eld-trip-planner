@@ -173,4 +173,37 @@ describe("PlaybackBar", () => {
     expect(button).toHaveAccessibleName("Play trip");
     expect(slider()).toHaveAttribute("aria-valuetext", expect.stringContaining("Fri, Oct 2, 11:45 CDT"));
   });
+
+  it("drops its drag listeners when it goes away mid-drag", async () => {
+    const added = vi.spyOn(window, "addEventListener");
+    const { unmount } = render(<Harness />);
+    await userEvent.click(screen.getByRole("button", { name: "Play trip" }));
+    fireEvent.pointerDown(slider());
+    const signals = added.mock.calls
+      .filter(([type]) => type === "pointerup" || type === "pointercancel")
+      .map(([, , options]) => (options as AddEventListenerOptions).signal!);
+    expect(signals).toHaveLength(2);
+    expect(signals.every((signal) => !signal.aborted)).toBe(true);
+    unmount();
+    expect(signals.every((signal) => signal.aborted)).toBe(true);
+    added.mockRestore();
+  });
+
+  it("lets go of them on release too", async () => {
+    const added = vi.spyOn(window, "addEventListener");
+    render(<Harness />);
+    await userEvent.click(screen.getByRole("button", { name: "Play trip" }));
+    fireEvent.pointerDown(slider());
+    const [, , options] = added.mock.calls.find(([type]) => type === "pointerup")!;
+    fireEvent.pointerUp(window);
+    expect((options as AddEventListenerOptions).signal!.aborted).toBe(true);
+    added.mockRestore();
+  });
+
+  it("gives the scrubber a full-height tap target", async () => {
+    render(<Harness />);
+    await userEvent.click(screen.getByRole("button", { name: "Play trip" }));
+    expect(slider()).toHaveClass("h-full");
+    expect(slider().parentElement).toHaveClass("h-[30px]");
+  });
 });

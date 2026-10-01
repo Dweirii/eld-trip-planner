@@ -104,7 +104,7 @@ export function Itinerary({
                       selected ? "bg-[#e6f3f3]" : now ? "bg-[#fff4f5]" : "hover:bg-surface",
                       // "Now" (replay) is a coral accent; selection keeps its teal one.
                       now
-                        ? "pr-14 shadow-[inset_3px_0_0_var(--color-coral-ink)]"
+                        ? "pr-16 shadow-[inset_3px_0_0_var(--color-coral-ink)]"
                         : selected && "shadow-[inset_3px_0_0_var(--color-teal)]",
                     )}
                   >
@@ -129,7 +129,7 @@ export function Itinerary({
 /** A small coral "Now" pill with a live dot (still under reduced motion). */
 function NowBadge() {
   return (
-    <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-coral-ink px-1.5 py-0.5 text-[9px] font-extrabold uppercase leading-none tracking-[0.08em] text-white">
+    <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-coral-ink px-1.5 py-0.5 text-[10px] font-extrabold uppercase leading-none tracking-[0.06em] text-white">
       <span aria-hidden="true" className="relative flex size-1.5">
         <span className="absolute inset-0 animate-ping rounded-full bg-white/80 motion-reduce:hidden" />
         <span className="relative size-1.5 rounded-full bg-white" />
@@ -144,7 +144,7 @@ function DrivingTo({ place }: { place: string }) {
   return (
     <p
       data-now
-      className="relative mb-0.5 grid grid-cols-[40px_14px_1fr] items-center gap-2 rounded-lg bg-[#fff4f5] py-1.5 pl-2 pr-14 text-[11.5px] font-semibold text-text shadow-[inset_3px_0_0_var(--color-coral-ink)]"
+      className="relative mb-0.5 grid grid-cols-[40px_14px_1fr] items-center gap-2 rounded-lg bg-[#fff4f5] py-1.5 pl-2 pr-16 text-[11.5px] font-semibold text-text shadow-[inset_3px_0_0_var(--color-coral-ink)]"
     >
       <span aria-hidden="true" className="col-start-2 flex justify-center">
         <span className="size-2 rounded-full bg-teal ring-[3px] ring-teal/20" />

@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { memo, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import { StopIcon } from "@/components/StopIcon";
 import type { DutyStatus } from "@/lib/api/types";
 import { STATUS_NAMES } from "@/lib/stops";
@@ -126,19 +126,24 @@ function Scrubber({ replay }: { replay: TripReplay }) {
   const { t, total, playing } = replay;
   const fraction = total > 0 ? Math.min(Math.max(t / total, 0), 1) : 0;
   const dragged = useRef(t);
+  const drag = useRef<AbortController | null>(null);
+  // A drag still under way when the bar goes away (Close, Edit trip) leaves no listeners behind.
+  useEffect(() => () => drag.current?.abort(), []);
 
   // Dragging pauses playback and picks it up again on release, like a video player (unless dropped at the end).
   function holdWhileDragging() {
     if (!playing) return;
     replay.pause();
     dragged.current = t;
+    drag.current?.abort();
+    const controller = new AbortController();
+    drag.current = controller;
     const release = () => {
-      window.removeEventListener("pointerup", release);
-      window.removeEventListener("pointercancel", release);
+      controller.abort();
       if (dragged.current < total) replay.play();
     };
-    window.addEventListener("pointerup", release);
-    window.addEventListener("pointercancel", release);
+    window.addEventListener("pointerup", release, { signal: controller.signal });
+    window.addEventListener("pointercancel", release, { signal: controller.signal });
   }
 
   return (
@@ -156,7 +161,8 @@ function Scrubber({ replay }: { replay: TripReplay }) {
           replay.seek(dragged.current);
         }}
         onPointerDown={holdWhileDragging}
-        className="scrubber-input peer absolute inset-x-0 top-0 z-10 m-0 h-5 w-full cursor-pointer opacity-0"
+        // The whole 30px strip, track and marks, is the touch target (WCAG 2.2: at least 24px).
+        className="scrubber-input peer absolute inset-0 z-10 m-0 h-full w-full cursor-pointer opacity-0"
       />
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-2 top-[7px] h-1.5 rounded-full bg-[#e3eeee]">
         <div className="absolute inset-y-0 left-0 rounded-full bg-teal" style={{ width: `${fraction * 100}%` }} />
@@ -217,7 +223,7 @@ const Marks = memo(function Marks({
           {day.labelled && (
             <span
               className={clsx(
-                "absolute top-[3px] whitespace-nowrap text-[9.5px] font-semibold leading-none text-muted",
+                "absolute top-[3px] whitespace-nowrap text-[10.5px] font-semibold leading-none text-muted",
                 day.at > 0.94 ? "right-0 pr-[3px]" : day.t > 0 ? "left-0 pl-[3px]" : "left-0",
               )}
             >
