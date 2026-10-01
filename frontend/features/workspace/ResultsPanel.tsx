@@ -74,7 +74,7 @@ export const ResultsPanel = memo(function ResultsPanel({
   ];
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3" data-tour="results">
       <div className="flex items-start gap-2">
         <div className="flex-1">
           <h2 ref={headingRef} tabIndex={-1} className="rounded-sm text-[14px] font-extrabold leading-snug">
@@ -98,7 +98,7 @@ export const ResultsPanel = memo(function ResultsPanel({
         </div>
       </div>
 
-      <dl className="grid grid-cols-3 gap-1.5 rounded-xl bg-[#f3f8f8] p-2.5">
+      <dl data-tour="stats" className="grid grid-cols-3 gap-1.5 rounded-xl bg-[#f3f8f8] p-2.5">
         <Stat label="miles" value={miles(summary.total_miles)} />
         <Stat label="log days" value={String(summary.days)} />
         <Stat label="door to door" value={duration(minutesBetween(summary.starts_at, summary.arrives_at))} />

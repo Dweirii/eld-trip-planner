@@ -25,6 +25,7 @@ export function TripForm({ values, errors, pending, onChange, onSubmit, onExampl
   return (
     <form
       noValidate
+      data-tour="trip-form"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
@@ -72,6 +73,7 @@ export function TripForm({ values, errors, pending, onChange, onSubmit, onExampl
       <DetailsSection values={values} onChange={onChange} errors={errors} />
       <button
         type="submit"
+        data-tour="plan"
         disabled={pending}
         className="rounded-full bg-coral-ink py-2.5 text-[13px] font-extrabold text-white shadow-sm transition hover:brightness-95 disabled:opacity-70"
       >

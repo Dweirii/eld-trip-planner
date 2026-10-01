@@ -34,12 +34,16 @@ interface Placed {
 
 function placeStop(stop: Stop): Placed {
   const title = stopTitle(stop);
-  return {
+  const placed: Placed = {
     id: stop.id,
     element: createMarkerElement(stop.kind, title),
     lngLat: [stop.lng, stop.lat],
     popup: popupContent(title, stopPopupLines(stop)),
   };
+  // The guided tour finds a stop's pin and popup by its id.
+  placed.element.dataset.stopId = stop.id;
+  placed.popup.dataset.stopId = stop.id;
+  return placed;
 }
 
 function placePreview(point: PreviewPoint): Placed {
@@ -408,7 +412,7 @@ export default function RouteMap({ trip, preview, selectedStopId, onSelectStop, 
   }, [truckLng, truckLat, truckStatus]);
 
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0" data-tour="map">
       {/* h-full/w-full, not absolute: maplibre-gl.css's unlayered `position: relative` beats Tailwind's layered `absolute`. */}
       <div ref={containerRef} className="h-full w-full" role="region" aria-label="Route map" />
       {unsupported ? (

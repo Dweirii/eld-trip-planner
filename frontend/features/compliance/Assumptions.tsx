@@ -3,7 +3,7 @@ import type { Trip } from "@/lib/api/types";
 /** The exact rules and assumptions the plan was built on (served by the API). */
 export function Assumptions({ assumptions }: { assumptions: Trip["assumptions"] }) {
   return (
-    <div className="space-y-4 text-[12px]">
+    <div data-tour="assumptions" className="space-y-4 text-[12px]">
       <table className="w-full">
         <caption className="sr-only">Rules applied</caption>
         <tbody className="divide-y divide-dashed divide-line">

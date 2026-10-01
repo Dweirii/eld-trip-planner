@@ -129,7 +129,7 @@ export function LogSheets({
     clsx("rounded-full px-3 py-1.5 text-xs font-semibold", active ? "bg-brand text-white" : "bg-[#e3eeee] text-text");
 
   return (
-    <section aria-labelledby={DAILY_LOGS_ID} className="px-4 pb-10 pt-6 print:p-0">
+    <section aria-labelledby={DAILY_LOGS_ID} data-tour="daily-logs" className="px-4 pb-10 pt-6 print:p-0">
       <div className="mx-auto flex max-w-[1000px] flex-wrap items-center gap-2 print:hidden">
         <h2 id={DAILY_LOGS_ID} tabIndex={-1} className="mr-2 scroll-mt-4 rounded-sm text-base font-extrabold">
           Daily logs
@@ -148,6 +148,7 @@ export function LogSheets({
         </button>
         <button
           type="button"
+          data-tour="print"
           onClick={() => window.print()}
           className="ml-auto rounded-full bg-coral-ink px-4 py-1.5 text-xs font-bold text-white"
         >

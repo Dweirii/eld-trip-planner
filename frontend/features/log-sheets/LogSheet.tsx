@@ -69,6 +69,7 @@ export const LogSheet = memo(function LogSheet({
   return (
     <article
       aria-label={`Driver's daily log for ${log.date}`}
+      data-tour="log-sheet"
       className="log-sheet mx-auto w-full min-w-[760px] max-w-[1000px] rounded-sm bg-paper px-7 pb-5 pt-6 font-mono text-ink shadow-[0_1px_0_#e6dcc8,0_14px_34px_rgb(4_59_75/0.13)] print:min-w-0 print:py-3"
     >
       <header className="grid grid-cols-[1.25fr_1fr_1.2fr] items-end gap-5">
@@ -132,6 +133,7 @@ export const LogSheet = memo(function LogSheet({
           </Field>
           <ol
             aria-label="Remarks"
+            data-tour="log-remarks"
             className={clsx(
               "mt-2 space-y-0.5 text-[10px] leading-snug print:col-span-2 print:mt-0 print:space-y-0 print:leading-tight",
               twoColumnRemarks && "print:columns-2 print:gap-x-8",
@@ -153,6 +155,7 @@ export const LogSheet = memo(function LogSheet({
 
       <footer
         data-role="recap"
+        data-tour="log-recap"
         className="mt-3 grid grid-cols-[1.1fr_repeat(4,1fr)_1.4fr] items-end gap-3 border-t-2 border-ink pt-2 text-[9px] print:mt-2"
       >
         <div>
@@ -183,6 +186,7 @@ function DutyGrid({
       <svg
         viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`}
         className="mt-4 block w-full print:mt-2"
+        data-tour="log-grid"
         role="group"
         aria-label={`Duty status grid for ${log.date}`}
       >
@@ -313,7 +317,7 @@ const GridArt = memo(function GridArt({ log, total }: { log: DailyLog; total: nu
         <circle key={index} cx={point.x} cy={point.y} r={2.3} fill={INK_BLUE} />
       ))}
 
-      <g data-role="totals" className="font-hand" fontSize={19} fontWeight={700} fill={INK_BLUE}>
+      <g data-role="totals" data-tour="log-totals" className="font-hand" fontSize={19} fontWeight={700} fill={INK_BLUE}>
         {ROWS.map((status) => (
           <text key={status} x={GRID.totalsX} y={rowCenterY(status) + 6}>
             {logHours(log.totals[status])}

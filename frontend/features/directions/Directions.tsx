@@ -18,7 +18,7 @@ function roadNote(step: RouteStep): string | null {
 /** Turn-by-turn route instructions, one section per leg (served by the API from openrouteservice). */
 export function Directions({ legs }: { legs: readonly RouteLeg[] }) {
   return (
-    <div className="space-y-4 text-[12px]">
+    <div data-tour="directions" className="space-y-4 text-[12px]">
       {legs.map((leg, index) => (
         <LegDirections key={index} leg={leg} number={index + 1} />
       ))}

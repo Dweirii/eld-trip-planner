@@ -4,6 +4,7 @@ export function NoticeToast({ notice, onRetry, onDismiss }: { notice: Notice; on
   return (
     <div
       role="alert"
+      data-tour="notice"
       className="absolute inset-x-4 bottom-6 z-30 mx-auto flex max-w-md items-start gap-3 rounded-2xl bg-brand p-4 text-sm text-white shadow-xl"
     >
       <p className="flex-1">{notice.message}</p>
