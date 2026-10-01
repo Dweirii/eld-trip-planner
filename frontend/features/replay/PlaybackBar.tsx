@@ -95,7 +95,8 @@ export function PlaybackBar({ replay }: { replay: TripReplay }) {
                 type="button"
                 onClick={replay.cycleSpeed}
                 aria-label={`Playback speed ${SPEED_LABELS[speed]}`}
-                className="h-7 min-w-10 rounded-full border-[1.5px] border-line px-2 text-[11px] font-extrabold tabular-nums text-brand transition hover:border-teal hover:bg-surface"
+                // Plex Mono draws a proper "×" (Plus Jakarta's reads like a subscript x).
+                className="h-7 min-w-11 rounded-full border-[1.5px] border-line px-2 font-mono text-[11px] font-semibold text-brand transition hover:border-teal hover:bg-surface"
               >
                 {SPEED_LABELS[speed]}
               </button>
@@ -212,7 +213,7 @@ const Marks = memo(function Marks({
             <span
               className={clsx(
                 "absolute top-[3px] whitespace-nowrap text-[9.5px] font-semibold leading-none text-muted",
-                day.at > 0.9 ? "right-0 pr-[3px]" : day.t > 0 ? "left-0 pl-[3px]" : "left-0",
+                day.at > 0.94 ? "right-0 pr-[3px]" : day.t > 0 ? "left-0 pl-[3px]" : "left-0",
               )}
             >
               {day.label}
