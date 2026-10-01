@@ -58,15 +58,18 @@ interface Padding {
   left: number;
 }
 
+const isDesktop = () => window.matchMedia("(min-width: 1024px)").matches;
+
 /** Leave room for the floating panel (desktop) or the bottom sheet (mobile) when fitting a route. */
 function panelPadding(container: HTMLElement): Padding {
-  if (window.matchMedia("(min-width: 1024px)").matches) return { top: 64, right: 64, bottom: 64, left: 390 };
-  // Top: clear of the map credits, which start expanded on small screens.
-  return { top: 80, right: 32, bottom: Math.round(container.clientHeight * 0.62), left: 32 };
+  if (isDesktop()) return { top: 64, right: 64, bottom: 64, left: 390 };
+  // Top: clear of the map credits, which start expanded on small screens. Bottom: clear of the sheet and
+  // of the "Play trip" and "Legend" buttons that sit just above it.
+  return { top: 80, right: 32, bottom: Math.round(container.clientHeight * 0.62) + 40, left: 32 };
 }
 
-/** Room the replay's playback bar takes at the bottom of the map, on top of the panel padding. */
-const PLAYBACK_BAR_CLEARANCE = 100;
+/** Extra room the expanded playback bar takes at the bottom of the map (desktop: over the map; small screens: above the sheet). */
+const PLAYBACK_BAR_CLEARANCE = { desktop: 100, mobile: 56 } as const;
 /** Auto-pan at most this often, and not this soon after the user moved the map themselves. */
 const PAN_EVERY_MS = 2_000;
 const USER_MOVE_GRACE_MS = 4_000;
@@ -74,7 +77,7 @@ const USER_MOVE_GRACE_MS = 4_000;
 /** Where the truck must stay: clear of the panel or sheet, the credits and the playback bar. */
 function replayViewport(container: HTMLElement): Padding {
   const padding = panelPadding(container);
-  return { ...padding, bottom: padding.bottom + PLAYBACK_BAR_CLEARANCE };
+  return { ...padding, bottom: padding.bottom + PLAYBACK_BAR_CLEARANCE[isDesktop() ? "desktop" : "mobile"] };
 }
 
 /** The truck turns round only after heading back this far (degrees of longitude), so wiggly roads don't flicker it. */
@@ -114,27 +117,59 @@ class Truck {
   }
 }
 
-interface PanClock {
+/** When the map last moved on its own (a fit or a pan) and when the user last moved it. */
+interface CameraClock {
+  fittedAt: number;
   lastPan: number;
   userMovedAt: number;
 }
 
-/** Ease the map so the truck sits in the middle of the free area, if it has left it (throttled; yields to the user). */
-function keepInView(map: maplibregl.Map, lngLat: LngLat, clock: PanClock) {
-  const now = performance.now();
-  if (now - clock.lastPan < PAN_EVERY_MS || now - clock.userMovedAt < USER_MOVE_GRACE_MS) return;
+/** The part of the map the truck should stay in, in container pixels (null before layout). */
+function freeArea(map: maplibregl.Map) {
   const container = map.getContainer();
   const width = container.clientWidth;
   const height = container.clientHeight;
-  if (!width || !height || map.isMoving()) return;
+  if (!width || !height) return null;
   const padding = replayViewport(container);
   const left = padding.left;
-  const right = Math.max(left, width - padding.right);
   const top = padding.top;
+  const right = Math.max(left, width - padding.right);
   const bottom = Math.max(top, height - padding.bottom);
-  const point = map.project(lngLat);
-  if (point.x >= left && point.x <= right && point.y >= top && point.y <= bottom) return;
+  const contains = (lngLat: LngLat) => {
+    const point = map.project(lngLat);
+    return point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
+  };
+  return { width, height, padding, left, top, right, bottom, contains };
+}
+
+/**
+ * As the replay starts, fit the whole route above the playback bar, so the truck can drive it without
+ * the map moving. Only if part of it is hidden, and only if the user hasn't moved the map since it was fitted.
+ */
+function frameRoute(map: maplibregl.Map, bounds: [LngLat, LngLat] | null, clock: CameraClock): boolean {
+  const area = freeArea(map);
+  if (!bounds || !area || clock.userMovedAt > clock.fittedAt) return false;
+  const [[west, south], [east, north]] = bounds;
+  const corners: LngLat[] = [
+    [west, south],
+    [west, north],
+    [east, south],
+    [east, north],
+  ];
+  if (corners.every(area.contains)) return false;
+  clock.fittedAt = clock.lastPan = performance.now();
+  map.fitBounds(bounds, { padding: area.padding, maxZoom: 9, duration: 900 });
+  return true;
+}
+
+/** Ease the map so the truck sits in the middle of the free area, if it has left it (throttled; yields to the user). */
+function keepInView(map: maplibregl.Map, lngLat: LngLat, clock: CameraClock) {
+  const now = performance.now();
+  if (now - clock.lastPan < PAN_EVERY_MS || now - clock.userMovedAt < USER_MOVE_GRACE_MS) return;
+  const area = freeArea(map);
+  if (!area || map.isMoving() || area.contains(lngLat)) return;
   clock.lastPan = now;
+  const { width, height, left, right, top, bottom } = area;
   map.easeTo({
     center: lngLat,
     offset: [Math.round((left + right - width) / 2), Math.round((top + bottom - height) / 2)],
@@ -180,7 +215,12 @@ export default function RouteMap({ trip, preview, selectedStopId, onSelectStop, 
   const lastFitRef = useRef("");
   const onSelectRef = useRef(onSelectStop);
   const truckRef = useRef<Truck | null>(null);
-  const panClockRef = useRef<PanClock>({ lastPan: Number.NEGATIVE_INFINITY, userMovedAt: Number.NEGATIVE_INFINITY });
+  const routeBoundsRef = useRef<[LngLat, LngLat] | null>(null);
+  const cameraRef = useRef<CameraClock>({
+    fittedAt: Number.NEGATIVE_INFINITY,
+    lastPan: Number.NEGATIVE_INFINITY,
+    userMovedAt: Number.NEGATIVE_INFINITY,
+  });
   const [ready, setReady] = useState(false);
   const [unsupported, setUnsupported] = useState(false);
 
@@ -213,16 +253,16 @@ export default function RouteMap({ trip, preview, selectedStopId, onSelectStop, 
       setUnsupported(true);
       return;
     }
-    const desktop = window.matchMedia("(min-width: 1024px)").matches;
+    const desktop = isDesktop();
     map.addControl(
       new maplibregl.AttributionControl({ compact: true, customAttribution: CREDITS }),
       desktop ? "bottom-right" : "top-left",
     );
     if (desktop) map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     // A drag, wheel or pinch carries the browser event; our own easeTo and fitBounds don't.
-    const panClock = panClockRef.current;
+    const camera = cameraRef.current;
     map.on("movestart", (event: { originalEvent?: unknown }) => {
-      if (event.originalEvent) panClock.userMovedAt = performance.now();
+      if (event.originalEvent) camera.userMovedAt = performance.now();
     });
     map.on("load", () => {
       map.addSource("route", { type: "geojson", data: EMPTY });
@@ -328,8 +368,10 @@ export default function RouteMap({ trip, preview, selectedStopId, onSelectStop, 
     const fitPoints = trip ? routeCoordinates : previewCoordinates;
     const fitKey = JSON.stringify(fitPoints);
     const bounds = boundsOf(fitPoints);
+    routeBoundsRef.current = trip ? bounds : null;
     if (bounds && fitKey !== lastFitRef.current) {
       lastFitRef.current = fitKey;
+      cameraRef.current.fittedAt = performance.now();
       map.fitBounds(bounds, { padding: panelPadding(map.getContainer()), maxZoom: 9, duration: 600 });
     }
 
@@ -358,8 +400,11 @@ export default function RouteMap({ trip, preview, selectedStopId, onSelectStop, 
     }
     const lngLat: LngLat = [truckLng, truckLat];
     if (truckRef.current) truckRef.current.move(lngLat, truckStatus);
-    else truckRef.current = new Truck(map, lngLat, truckStatus);
-    keepInView(map, lngLat, panClockRef.current);
+    else {
+      truckRef.current = new Truck(map, lngLat, truckStatus);
+      if (frameRoute(map, routeBoundsRef.current, cameraRef.current)) return;
+    }
+    keepInView(map, lngLat, cameraRef.current);
   }, [truckLng, truckLat, truckStatus]);
 
   return (

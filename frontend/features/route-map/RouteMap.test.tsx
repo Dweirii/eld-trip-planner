@@ -19,7 +19,7 @@ const fake = vi.hoisted(() => {
     sources = new Map<string, FakeSource>();
     fitBounds = vi.fn();
     easeTo = vi.fn();
-    project = vi.fn(() => ({ x: 0, y: 0 }));
+    project = vi.fn<(lngLat: [number, number]) => { x: number; y: number }>(() => ({ x: 0, y: 0 }));
     isMoving = vi.fn(() => false);
     addLayer = vi.fn();
     addControl = vi.fn();
@@ -276,6 +276,23 @@ describe("RouteMap", () => {
       rerender({ replay: null });
       expect(container.querySelector(".truck-marker")).toBeNull();
       expect(fake.FakeMarker.instances).toHaveLength(sampleTrip.stops.length + 1);
+    });
+
+    it("frames the whole route above the playback bar when the replay starts, unless the user moved the map", () => {
+      const { map, rerender } = setup();
+      Object.defineProperty(map.container, "clientWidth", { value: 1200, configurable: true });
+      Object.defineProperty(map.container, "clientHeight", { value: 800, configurable: true });
+      // Dallas, the south-west corner, sits under the bar.
+      map.project.mockImplementation(([lng]) => (lng < -90 ? { x: 500, y: 700 } : { x: 900, y: 100 }));
+      rerender({ replay: { lngLat: [-87.6, 41.9], status: "driving" } });
+      expect(map.fitBounds).toHaveBeenCalledTimes(2);
+      expect(map.fitBounds.mock.calls[1][1]).toMatchObject({ padding: { top: 64, right: 64, bottom: 164, left: 390 } });
+      expect(map.easeTo).not.toHaveBeenCalled();
+
+      rerender({ replay: null });
+      map.emit("movestart", { originalEvent: new MouseEvent("mousedown") });
+      rerender({ replay: { lngLat: [-87.6, 41.9], status: "driving" } });
+      expect(map.fitBounds).toHaveBeenCalledTimes(2);
     });
 
     it("pans gently to keep the truck in view, but not too often or right after the user moves the map", () => {
