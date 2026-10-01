@@ -115,4 +115,22 @@ describe("PlaybackBar", () => {
     await userEvent.click(screen.getByRole("button", { name: "Pause trip" }));
     expect(live).toBeEmptyDOMElement();
   });
+
+  it("holds playback while the scrubber is dragged, and picks it up again unless dropped at the end", async () => {
+    render(<Harness />);
+    const button = screen.getByRole("button", { name: "Play trip" });
+    await userEvent.click(button);
+    fireEvent.pointerDown(slider());
+    expect(button).toHaveAccessibleName("Play trip");
+    fireEvent.change(slider(), { target: { value: "900" } });
+    fireEvent.pointerUp(window);
+    expect(button).toHaveAccessibleName("Pause trip");
+    expect(slider()).toHaveAttribute("aria-valuetext", expect.stringContaining("Thu, Oct 1, 21:00 CDT"));
+
+    fireEvent.pointerDown(slider());
+    fireEvent.change(slider(), { target: { value: "1785" } });
+    fireEvent.pointerUp(window);
+    expect(button).toHaveAccessibleName("Play trip");
+    expect(slider()).toHaveAttribute("aria-valuetext", expect.stringContaining("Fri, Oct 2, 11:45 CDT"));
+  });
 });

@@ -125,15 +125,17 @@ export function PlaybackBar({ replay }: { replay: TripReplay }) {
 function Scrubber({ replay }: { replay: TripReplay }) {
   const { t, total, playing } = replay;
   const fraction = total > 0 ? Math.min(Math.max(t / total, 0), 1) : 0;
+  const dragged = useRef(t);
 
-  // Dragging pauses playback and picks it up again on release, like a video player.
+  // Dragging pauses playback and picks it up again on release, like a video player (unless dropped at the end).
   function holdWhileDragging() {
     if (!playing) return;
     replay.pause();
+    dragged.current = t;
     const release = () => {
       window.removeEventListener("pointerup", release);
       window.removeEventListener("pointercancel", release);
-      replay.play();
+      if (dragged.current < total) replay.play();
     };
     window.addEventListener("pointerup", release);
     window.addEventListener("pointercancel", release);
@@ -149,7 +151,10 @@ function Scrubber({ replay }: { replay: TripReplay }) {
         max={total}
         step={SCRUB_STEP}
         value={t}
-        onChange={(event) => replay.seek(Number(event.target.value))}
+        onChange={(event) => {
+          dragged.current = Number(event.target.value);
+          replay.seek(dragged.current);
+        }}
         onPointerDown={holdWhileDragging}
         className="scrubber-input peer absolute inset-x-0 top-0 z-10 m-0 h-5 w-full cursor-pointer opacity-0"
       />
