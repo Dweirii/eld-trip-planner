@@ -1,6 +1,6 @@
 # Milepost web (frontend)
 
-The map workspace for Milepost: plan a truck trip under FMCSA Hours-of-Service rules, see the route and every required stop on a map, check each rule, and print filled-in Driver's Daily Logs. The Django API in `../backend` does the planning; this app is the UI.
+The map workspace for Milepost: plan a truck trip under FMCSA Hours-of-Service rules, see the route, turn-by-turn directions and every required stop, check each rule, and print filled-in Driver's Daily Logs. The Django API in `../backend` does the planning; this app is the UI.
 
 ## Stack
 
@@ -22,6 +22,7 @@ features/
   route-map/            RouteMap (MapLibre), stop markers and popups, MapLegend, bounds helpers
   itinerary/            stops grouped by day
   compliance/           RuleChecks (observed / limit per rule) and Assumptions
+  directions/           Directions: turn-by-turn route instructions per leg (from OpenRouteService)
   log-sheets/           LogSheet (the paper form as SVG), geometry.ts (grid math), linking.ts
                         (brackets ↔ stops), miles.ts (daily miles), day tabs and print
   workspace/            Workspace shell, ResultsPanel, usePlanner (all planner state), toast, overlay
