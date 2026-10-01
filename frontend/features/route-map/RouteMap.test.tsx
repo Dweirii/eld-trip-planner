@@ -18,6 +18,11 @@ const fake = vi.hoisted(() => {
     handlers = new Map<string, Handler[]>();
     sources = new Map<string, FakeSource>();
     fitBounds = vi.fn();
+    // Like MapLibre: a resize fires movestart and moveend, with no originalEvent (the user didn't move it).
+    resize = vi.fn(() => {
+      this.emit("movestart", {});
+      this.emit("moveend", {});
+    });
     easeTo = vi.fn();
     project = vi.fn<(lngLat: [number, number]) => { x: number; y: number }>(() => ({ x: 0, y: 0 }));
     isMoving = vi.fn(() => false);
@@ -326,6 +331,36 @@ describe("RouteMap", () => {
       expect(map.easeTo).toHaveBeenCalledTimes(2);
       now.mockRestore();
     });
+  });
+
+  it("measures the map before fitting a route, as the results resize it in the same render", () => {
+    const { map } = setup();
+    expect(map.resize).toHaveBeenCalled();
+    expect(map.resize.mock.invocationCallOrder[0]).toBeLessThan(map.fitBounds.mock.invocationCallOrder[0]);
+  });
+
+  it("doesn't take its own resize before a fit for the user moving the map", () => {
+    const { map, rerender } = setup({ trip: null, preview: PREVIEW });
+    rerender({ trip: sampleTrip, preview: [] });
+    expect(map.resize).toHaveBeenCalledTimes(2);
+    Object.defineProperty(map.container, "clientWidth", { value: 1200, configurable: true });
+    Object.defineProperty(map.container, "clientHeight", { value: 800, configurable: true });
+    map.project.mockImplementation(([lng]) => (lng < -90 ? { x: 500, y: 700 } : { x: 900, y: 100 }));
+    // The replay still frames the route: no user move since the fit.
+    rerender({ trip: sampleTrip, preview: [], replay: { lngLat: [-87.6, 41.9], status: "driving" } });
+    expect(map.fitBounds).toHaveBeenCalledTimes(3);
+  });
+
+  it("keeps extra room clear at the bottom when fitting, if asked (the guided tour's captions)", () => {
+    const { map } = setup({ bottomInset: 140 });
+    expect(map.fitBounds.mock.calls[0][1]).toMatchObject({ padding: { top: 64, right: 64, bottom: 204, left: 390 } });
+  });
+
+  it("marks each stop's pin and popup with the stop's id", () => {
+    setup();
+    expect(markerFor("s5")).toHaveAttribute("data-stop-id", "s5");
+    const popup = fake.FakePopup.instances.find((instance) => (instance.content as HTMLElement).dataset.stopId === "s5");
+    expect(popup).toBeDefined();
   });
 
   it("names the GeoNames licence in the map credits", () => {

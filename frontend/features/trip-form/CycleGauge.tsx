@@ -15,7 +15,7 @@ export function CycleGauge({ value, onChange, error }: CycleGaugeProps) {
   const valid = Number.isFinite(value);
   const used = valid ? Math.min(Math.max(value, 0), CYCLE_LIMIT) : 0;
   return (
-    <div>
+    <div data-tour="cycle">
       <div className="flex items-center justify-between gap-3">
         <label htmlFor="cycle-used" className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted">
           Current cycle used

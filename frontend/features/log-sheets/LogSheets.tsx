@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { useId, useMemo, useState } from "react";
+import { useEffectEvent, useId, useLayoutEffect, useMemo, useState } from "react";
 import { TabPanel, Tabs } from "@/components/ui/Tabs";
 import type { DailyLog, Trip } from "@/lib/api/types";
 import { addDays, shortDate } from "@/lib/format";
@@ -52,13 +52,31 @@ export interface LogSheetsProps {
   onSelectStop: (stopId: string | null) => void;
   /** Trip replay: draws a now line on the playhead's sheet and follows it from day to day. */
   playhead?: LogPlayhead | null;
+  /** The day shown (an index into the daily logs). Pass it to control the day (the guided tour does). */
+  activeDay?: number;
+  /** Called with the day the user picks, or the one the replay moves to. */
+  onActiveDayChange?: (day: number) => void;
 }
 
 /** Day tabs over the paper sheets. Every sheet stays in the DOM so "Print / PDF" gets all days. */
-export function LogSheets({ trip, selectedStopId, onSelectStop, playhead = null }: LogSheetsProps) {
+export function LogSheets({
+  trip,
+  selectedStopId,
+  onSelectStop,
+  playhead = null,
+  activeDay: controlledDay,
+  onActiveDayChange,
+}: LogSheetsProps) {
   const logs = trip.daily_logs;
-  const [activeDay, setActiveDay] = useState(0);
+  const [ownDay, setOwnDay] = useState(0);
+  const activeDay = controlledDay ?? ownDay;
   const [showAll, setShowAll] = useState(false);
+  // A day the replay moved to, for the parent: told after rendering, never while rendering.
+  const [followedTo, setFollowedTo] = useState<{ day: number } | null>(null);
+  const reportFollow = useEffectEvent((day: number) => onActiveDayChange?.(day));
+  useLayoutEffect(() => {
+    if (followedTo) reportFollow(followedTo.day);
+  }, [followedTo]);
   const now = sheetPlayhead(logs, playhead);
 
   // Follow the replay to its day when the day changes or play (re)starts, never in between, so a day
@@ -70,7 +88,8 @@ export function LogSheets({ trip, selectedStopId, onSelectStop, playhead = null 
   if (nowDay !== followed.day || nowPlaying !== followed.playing) {
     setFollowed({ day: nowDay, playing: nowPlaying });
     if (nowDay !== -1 && (nowDay !== followed.day || (nowPlaying && !followed.playing))) {
-      setActiveDay(nowDay);
+      setOwnDay(nowDay);
+      if (onActiveDayChange && nowDay !== activeDay) setFollowedTo({ day: nowDay });
       setOverriddenStopId(selectedStopId);
     }
   }
@@ -99,8 +118,10 @@ export function LogSheets({ trip, selectedStopId, onSelectStop, playhead = null 
   const dayTabs = logs.map((log) => ({ id: log.date, label: `Day ${log.day_number} · ${shortDate(log.date)}` }));
 
   function chooseDay(date: string) {
+    const day = Math.max(0, logs.findIndex((log) => log.date === date));
     setShowAll(false);
-    setActiveDay(Math.max(0, logs.findIndex((log) => log.date === date)));
+    setOwnDay(day);
+    onActiveDayChange?.(day);
     if (selectedStop) onSelectStop(null);
   }
 
@@ -108,7 +129,7 @@ export function LogSheets({ trip, selectedStopId, onSelectStop, playhead = null 
     clsx("rounded-full px-3 py-1.5 text-xs font-semibold", active ? "bg-brand text-white" : "bg-[#e3eeee] text-text");
 
   return (
-    <section aria-labelledby={DAILY_LOGS_ID} className="px-4 pb-10 pt-6 print:p-0">
+    <section aria-labelledby={DAILY_LOGS_ID} data-tour="daily-logs" className="px-4 pb-10 pt-6 print:p-0">
       <div className="mx-auto flex max-w-[1000px] flex-wrap items-center gap-2 print:hidden">
         <h2 id={DAILY_LOGS_ID} tabIndex={-1} className="mr-2 scroll-mt-4 rounded-sm text-base font-extrabold">
           Daily logs
@@ -127,6 +148,7 @@ export function LogSheets({ trip, selectedStopId, onSelectStop, playhead = null 
         </button>
         <button
           type="button"
+          data-tour="print"
           onClick={() => window.print()}
           className="ml-auto rounded-full bg-coral-ink px-4 py-1.5 text-xs font-bold text-white"
         >

@@ -43,6 +43,7 @@ export function PlaybackBar({ replay }: { replay: TripReplay }) {
       <div
         role="group"
         aria-label="Trip replay"
+        data-tour="playback"
         className={clsx(
           "pointer-events-auto bg-white text-text shadow-[0_8px_30px_rgb(4_59_75/0.18)]",
           active
@@ -54,6 +55,7 @@ export function PlaybackBar({ replay }: { replay: TripReplay }) {
         <button
           ref={playRef}
           type="button"
+          data-tour="play"
           aria-label={playing ? "Pause trip" : "Play trip"}
           onClick={playing ? replay.pause : replay.play}
           className={clsx(

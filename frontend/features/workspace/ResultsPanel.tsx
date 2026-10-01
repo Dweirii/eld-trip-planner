@@ -11,7 +11,7 @@ import { showDailyLogs } from "@/features/log-sheets/LogSheets";
 import type { Trip } from "@/lib/api/types";
 import { cityOf, clockTime, duration, isoDate, logHours, miles, minutesBetween, shortDate } from "@/lib/format";
 
-type Tab = "itinerary" | "directions" | "rules" | "assumptions";
+export type ResultsTab = "itinerary" | "directions" | "rules" | "assumptions";
 
 export interface ResultsPanelProps {
   trip: Trip;
@@ -26,6 +26,10 @@ export interface ResultsPanelProps {
   drivingToStopId?: string | null;
   /** Keep the itinerary's current row in view (while the replay plays). */
   followCurrent?: boolean;
+  /** The tab shown. Pass it to control the tab (the guided tour does); leave it out and the panel keeps its own. */
+  tab?: ResultsTab;
+  /** Called with the tab the user picks. */
+  onTabChange?: (tab: ResultsTab) => void;
 }
 
 /** Memoised: a replay re-renders the workspace every frame, but the panel only when the current stop changes. */
@@ -39,8 +43,15 @@ export const ResultsPanel = memo(function ResultsPanel({
   currentStopId = null,
   drivingToStopId = null,
   followCurrent = false,
+  tab: controlledTab,
+  onTabChange,
 }: ResultsPanelProps) {
-  const [tab, setTab] = useState<Tab>("itinerary");
+  const [ownTab, setOwnTab] = useState<ResultsTab>("itinerary");
+  const tab = controlledTab ?? ownTab;
+  const selectTab = (next: ResultsTab) => {
+    setOwnTab(next);
+    onTabChange?.(next);
+  };
   const tabsId = useId();
   const { inputs, summary } = trip;
   const passed = trip.compliance.filter((check) => check.passed).length;
@@ -48,7 +59,7 @@ export const ResultsPanel = memo(function ResultsPanel({
     .map((place) => cityOf(place.label))
     .join(" → ");
   const allPassed = passed === trip.compliance.length;
-  const tabs: TabItem<Tab>[] = [
+  const tabs: TabItem<ResultsTab>[] = [
     { id: "itinerary", label: "Itinerary" },
     { id: "directions", label: "Directions" },
     {
@@ -63,10 +74,15 @@ export const ResultsPanel = memo(function ResultsPanel({
   ];
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3" data-tour="results">
       <div className="flex items-start gap-2">
         <div className="flex-1">
-          <h2 ref={headingRef} tabIndex={-1} className="rounded-sm text-[14px] font-extrabold leading-snug">
+          {/* Focused when these results appear: a highlight inside its own box, clear of the line below. */}
+          <h2
+            ref={headingRef}
+            tabIndex={-1}
+            className="-mx-1.5 rounded-md px-1.5 text-[14px] font-extrabold leading-snug focus-visible:bg-[#e6f3f3] focus-visible:shadow-[inset_3px_0_0_var(--color-teal)] focus-visible:outline-hidden"
+          >
             {title}
           </h2>
           <p className="text-[11px] text-muted">
@@ -87,7 +103,7 @@ export const ResultsPanel = memo(function ResultsPanel({
         </div>
       </div>
 
-      <dl className="grid grid-cols-3 gap-1.5 rounded-xl bg-[#f3f8f8] p-2.5">
+      <dl data-tour="stats" className="grid grid-cols-3 gap-1.5 rounded-xl bg-[#f3f8f8] p-2.5">
         <Stat label="miles" value={miles(summary.total_miles)} />
         <Stat label="log days" value={String(summary.days)} />
         <Stat label="door to door" value={duration(minutesBetween(summary.starts_at, summary.arrives_at))} />
@@ -109,7 +125,7 @@ export const ResultsPanel = memo(function ResultsPanel({
         label="Trip details"
         items={tabs}
         selected={tab}
-        onSelect={setTab}
+        onSelect={selectTab}
         className="flex gap-0.5 rounded-full bg-[#eef4f4] p-1"
         // Four tabs share a ~300px panel: size each to its label and keep it on one line.
         tabClassName={(selected) =>

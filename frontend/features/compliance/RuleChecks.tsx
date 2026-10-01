@@ -9,7 +9,7 @@ function amount(value: number, unit: string): string {
 /** The independent checker's verdict on every rule: observed / limit with the regulation cited. */
 export function RuleChecks({ checks }: { checks: readonly RuleCheck[] }) {
   return (
-    <ul className="divide-y divide-dashed divide-line">
+    <ul data-tour="rules" className="divide-y divide-dashed divide-line">
       {checks.map((check) => (
         <li key={check.id} className="flex items-center justify-between gap-3 py-2 text-[12px]">
           <span>

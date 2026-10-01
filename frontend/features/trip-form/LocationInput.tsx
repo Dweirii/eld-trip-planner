@@ -142,7 +142,7 @@ export function LocationInput({
 
   const message = error ?? localError;
   return (
-    <div className="relative">
+    <div className="relative" data-tour={`location-${marker}`}>
       <label htmlFor={inputId} className="sr-only">
         {label}
       </label>

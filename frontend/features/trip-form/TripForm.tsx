@@ -25,6 +25,7 @@ export function TripForm({ values, errors, pending, onChange, onSubmit, onExampl
   return (
     <form
       noValidate
+      data-tour="trip-form"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
@@ -32,7 +33,12 @@ export function TripForm({ values, errors, pending, onChange, onSubmit, onExampl
       className="flex flex-col gap-4"
     >
       <div>
-        <h2 ref={headingRef} tabIndex={-1} className="rounded-sm text-[15px] font-extrabold">
+        {/* Focused when the form comes back: a highlight inside its own box, clear of the line below. */}
+        <h2
+          ref={headingRef}
+          tabIndex={-1}
+          className="-mx-1.5 rounded-md px-1.5 text-[15px] font-extrabold focus-visible:bg-[#e6f3f3] focus-visible:shadow-[inset_3px_0_0_var(--color-teal)] focus-visible:outline-hidden"
+        >
           Plan a trip
         </h2>
         <p className="mt-0.5 text-[12px] text-muted">
@@ -72,6 +78,7 @@ export function TripForm({ values, errors, pending, onChange, onSubmit, onExampl
       <DetailsSection values={values} onChange={onChange} errors={errors} />
       <button
         type="submit"
+        data-tour="plan"
         disabled={pending}
         className="rounded-full bg-coral-ink py-2.5 text-[13px] font-extrabold text-white shadow-sm transition hover:brightness-95 disabled:opacity-70"
       >

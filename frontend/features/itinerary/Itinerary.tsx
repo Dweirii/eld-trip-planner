@@ -82,7 +82,7 @@ export function Itinerary({
   }, [followCurrent, currentStopId, drivingToStopId]);
 
   return (
-    <ol ref={listRef} aria-label="Itinerary" className="space-y-3">
+    <ol ref={listRef} aria-label="Itinerary" data-tour="itinerary" className="space-y-3">
       {groupByDate(stops).map(([date, dayStops]) => (
         <li key={date}>
           <h3 className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-muted">{shortDate(date)}</h3>
@@ -97,6 +97,7 @@ export function Itinerary({
                   <button
                     type="button"
                     aria-pressed={selected}
+                    data-stop-id={stop.id}
                     data-now={now || undefined}
                     onClick={() => onSelectStop(stop.id)}
                     className={clsx(

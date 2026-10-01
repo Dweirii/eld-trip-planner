@@ -1,13 +1,17 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sampleTrip } from "@/lib/api/__fixtures__";
 import { api } from "@/lib/api/client";
 import { Workspace } from "./Workspace";
 
-const navigation = vi.hoisted(() => ({ pathname: "/" }));
+const navigation = vi.hoisted(() => ({ pathname: "/", search: "", router: { replace: () => undefined } }));
 
-vi.mock("next/navigation", () => ({ usePathname: () => navigation.pathname }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => navigation.pathname,
+  useSearchParams: () => new URLSearchParams(navigation.search),
+  useRouter: () => navigation.router,
+}));
 // The map needs WebGL; RouteMap has its own tests.
 vi.mock("next/dynamic", () => ({
   default: () =>
@@ -25,6 +29,7 @@ const TITLE = "Chicago → St. Louis → Dallas";
 
 beforeEach(() => {
   navigation.pathname = "/";
+  navigation.search = "";
   vi.mocked(api.health).mockResolvedValue({ status: "ok", engine_version: "test" });
   planTrip.mockResolvedValue(sampleTrip);
   window.history.replaceState(null, "", "/");
@@ -121,6 +126,64 @@ describe("Workspace", () => {
     expect(screen.getByRole("heading", { name: "Plan a trip" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Current location" })).toHaveValue("");
     expect(screen.queryByRole("heading", { name: "Daily logs" })).not.toBeInTheDocument();
+  });
+
+  it("opens the results on the itinerary each time they appear", async () => {
+    render(<Workspace initialTrip={sampleTrip} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Rules 7/7" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Day 2 · Fri, Oct 2" }));
+    await userEvent.click(screen.getByRole("button", { name: "Edit trip" }));
+    await userEvent.click(screen.getByRole("button", { name: "Back to results" }));
+    expect(screen.getByRole("tab", { name: "Itinerary" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Day 1 · Thu, Oct 1" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  describe("guided tour", () => {
+    it("starts from ?tour=1 on an empty planner and types the first city", async () => {
+      navigation.search = "tour=1&tourSpeed=20";
+      window.history.replaceState(null, "", "/?tour=1&tourSpeed=20");
+      render(<Workspace initialTrip={sampleTrip} />);
+      const tour = screen.getByRole("region", { name: "Guided tour" });
+      expect(within(tour).getByText(/Milepost plans a truck trip/)).toBeInTheDocument();
+      expect(window.location.search).toBe("");
+      expect(await screen.findByRole("heading", { name: "Plan a trip" })).toBeInTheDocument();
+
+      const current = screen.getByRole("combobox", { name: "Current location" });
+      await waitFor(() => expect(current).toHaveValue("Chicago, IL"), { timeout: 3000 });
+      expect(api.planTrip).not.toHaveBeenCalled();
+
+      await userEvent.click(within(tour).getByRole("button", { name: "Exit tour" }));
+      expect(screen.queryByRole("region", { name: "Guided tour" })).not.toBeInTheDocument();
+    });
+
+    it("goes on from a pause with Next, showing it is playing again", () => {
+      navigation.search = "tour=1";
+      window.history.replaceState(null, "", "/?tour=1");
+      render(<Workspace />);
+      const tour = screen.getByRole("region", { name: "Guided tour" });
+      fireEvent.keyDown(document.body, { key: " " });
+      expect(within(tour).getByText("Paused (press Space to continue)")).toBeInTheDocument();
+      expect(within(tour).getByRole("button", { name: "Resume tour" })).toBeInTheDocument();
+
+      fireEvent.keyDown(document.body, { key: "ArrowRight" });
+      expect(within(tour).getByText("2 / 16")).toBeInTheDocument();
+      expect(within(tour).queryByText("Paused (press Space to continue)")).not.toBeInTheDocument();
+      expect(within(tour).getByRole("button", { name: "Pause tour" })).toBeInTheDocument();
+
+      fireEvent.keyDown(document.body, { key: "Escape" });
+    });
+
+    it("leaves focus where it is when the tour brings up the results (its captions narrate instead)", async () => {
+      navigation.search = "tour=1&tourSpeed=20";
+      window.history.replaceState(null, "", "/?tour=1&tourSpeed=20");
+      render(<Workspace />);
+      // Next, step by step, to the results: the tour plans the trip itself.
+      for (let step = 0; step < 5; step++) fireEvent.keyDown(document.body, { key: "ArrowRight" });
+      const heading = await screen.findByRole("heading", { name: TITLE });
+      expect(within(screen.getByRole("region", { name: "Guided tour" })).getByText("6 / 16")).toBeInTheDocument();
+      expect(heading).not.toHaveFocus();
+      expect(document.activeElement).toBe(document.body);
+    });
   });
 
   describe("trip replay", () => {
