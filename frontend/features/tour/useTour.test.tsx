@@ -2,7 +2,7 @@ import { act, fireEvent, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TourController } from "./controller";
 import type { Scheduler, TourStep } from "./runner";
-import { tourSpeed, useTour } from "./useTour";
+import { TOUR_UI_ATTRIBUTE, tourSpeed, useTour } from "./useTour";
 
 const navigation = vi.hoisted(() => {
   const replace = vi.fn();
@@ -116,23 +116,106 @@ describe("useTour", () => {
     expect(again.result.current.captions).toBe(true);
   });
 
-  it("leaves the keys alone while the user types in a field", () => {
+  it("treats typing in a field as the user taking over: it pauses, and leaves the keys to the field", () => {
     const { result } = setup();
     const input = document.createElement("input");
     document.body.append(input);
     input.focus();
     for (const name of [" ", "ArrowRight", "c", "Escape"]) key(input, name);
+    expect(result.current).toMatchObject({ active: true, paused: true, caption: "One", captions: true });
+  });
+
+  it("leaves arrow keys to tabs and sliders, pausing for the user instead of changing step", () => {
+    const { result } = setup();
+    for (const role of ["tab", "slider"]) {
+      const control = document.createElement("div");
+      control.setAttribute("role", role);
+      control.tabIndex = 0;
+      document.body.append(control);
+      key(control, "ArrowRight");
+    }
+    expect(result.current).toMatchObject({ caption: "One", paused: true });
+  });
+
+  it("leaves Space to a focused button, link or tab: no toggle, the user takes over", () => {
+    const { result } = setup();
+    const controls = ["button", "a", "summary"].map((tag) => {
+      const element = document.createElement(tag);
+      if (element instanceof HTMLAnchorElement) element.href = "#stop";
+      document.body.append(element);
+      return element;
+    });
+    const tab = document.createElement("div");
+    tab.setAttribute("role", "tab");
+    document.body.append(tab);
+
+    key(document.body, " ");
+    expect(result.current.paused).toBe(true);
+    for (const control of [...controls, tab]) {
+      const notCancelled = fireEvent.keyDown(control, { key: " " });
+      expect(notCancelled).toBe(true);
+      expect(result.current.paused).toBe(true);
+    }
+  });
+
+  it("leaves Space and Enter on its own controls to them, and does not count them as taking over", () => {
+    const { result } = setup();
+    const tourUi = document.createElement("div");
+    tourUi.setAttribute(TOUR_UI_ATTRIBUTE, "");
+    const pause = document.createElement("button");
+    tourUi.append(pause);
+    document.body.append(tourUi);
+    expect(fireEvent.keyDown(pause, { key: " " })).toBe(true);
+    expect(fireEvent.keyDown(pause, { key: "Enter" })).toBe(true);
+    expect(result.current.paused).toBe(false);
+    key(pause, "ArrowRight");
+    expect(result.current.caption).toBe("Two");
+  });
+
+  it("pauses when the user works the app from the keyboard", () => {
+    for (const [tag, name] of [
+      ["button", "Enter"],
+      ["button", " "],
+      ["input", "x"],
+      ["body", "Tab"],
+    ] as const) {
+      const { result, unmount } = setup();
+      const target = tag === "body" ? document.body : document.body.appendChild(document.createElement(tag));
+      key(target, name);
+      expect(result.current.paused, `${name} on ${tag}`).toBe(true);
+      unmount();
+    }
+  });
+
+  it("ignores a lone modifier and browser shortcuts with one", () => {
+    const { result } = setup();
+    for (const name of ["Shift", "Control", "Alt", "Meta"]) key(document.body, name);
+    act(() => void fireEvent.keyDown(document.body, { key: "c", metaKey: true }));
+    act(() => void fireEvent.keyDown(document.body, { key: "Tab", ctrlKey: true }));
+    expect(result.current).toMatchObject({ paused: false, caption: "One", captions: true });
+  });
+
+  it("leaves every key to an open dialog", () => {
+    const { result } = setup();
+    const dialog = document.createElement("dialog");
+    dialog.setAttribute("open", "");
+    const button = document.createElement("button");
+    dialog.append(button);
+    document.body.append(dialog);
+    for (const name of [" ", "ArrowRight", "c", "Escape", "Enter"]) key(document.body, name);
+    key(button, "Enter");
     expect(result.current).toMatchObject({ active: true, paused: false, caption: "One", captions: true });
   });
 
-  it("leaves arrow keys to tabs and sliders, and ignores shortcuts with a modifier", () => {
+  it("carries on when Next or Previous is pressed while paused", () => {
     const { result } = setup();
-    const tab = document.createElement("button");
-    tab.setAttribute("role", "tab");
-    document.body.append(tab);
-    key(tab, "ArrowRight");
-    act(() => void fireEvent.keyDown(document.body, { key: "c", metaKey: true }));
-    expect(result.current).toMatchObject({ caption: "One", captions: true });
+    key(document.body, " ");
+    expect(result.current.paused).toBe(true);
+    key(document.body, "ArrowRight");
+    expect(result.current).toMatchObject({ paused: false, caption: "Two" });
+    key(document.body, " ");
+    key(document.body, "ArrowLeft");
+    expect(result.current).toMatchObject({ paused: false, caption: "One" });
   });
 
   it("pauses when the user clicks in the app, but not on the tour's own controls", () => {

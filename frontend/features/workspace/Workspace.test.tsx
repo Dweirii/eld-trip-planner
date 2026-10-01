@@ -156,6 +156,23 @@ describe("Workspace", () => {
       expect(screen.queryByRole("region", { name: "Guided tour" })).not.toBeInTheDocument();
     });
 
+    it("goes on from a pause with Next, showing it is playing again", () => {
+      navigation.search = "tour=1";
+      window.history.replaceState(null, "", "/?tour=1");
+      render(<Workspace />);
+      const tour = screen.getByRole("region", { name: "Guided tour" });
+      fireEvent.keyDown(document.body, { key: " " });
+      expect(within(tour).getByText("Paused (press Space to continue)")).toBeInTheDocument();
+      expect(within(tour).getByRole("button", { name: "Resume tour" })).toBeInTheDocument();
+
+      fireEvent.keyDown(document.body, { key: "ArrowRight" });
+      expect(within(tour).getByText("2 / 16")).toBeInTheDocument();
+      expect(within(tour).queryByText("Paused (press Space to continue)")).not.toBeInTheDocument();
+      expect(within(tour).getByRole("button", { name: "Pause tour" })).toBeInTheDocument();
+
+      fireEvent.keyDown(document.body, { key: "Escape" });
+    });
+
     it("leaves focus where it is when the tour brings up the results (its captions narrate instead)", async () => {
       navigation.search = "tour=1&tourSpeed=20";
       window.history.replaceState(null, "", "/?tour=1&tourSpeed=20");

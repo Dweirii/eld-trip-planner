@@ -103,6 +103,19 @@ function usesArrows(target: Element): boolean {
   );
 }
 
+/** Space presses these itself, so the tour leaves Space to them. */
+const SPACE_PRESSES =
+  'button, a[href], summary, select, [role="button"], [role="tab"], [role="option"], [role="slider"]';
+
+const MODIFIERS = new Set(["Shift", "Control", "Alt", "AltGraph", "Meta", "CapsLock", "Fn", "OS"]);
+
+/** The key belongs to what has focus, not to the tour: typing, Space on a button, arrows on tabs. */
+function leftToTarget(key: string, target: Element): boolean {
+  if (isTyping(target)) return true;
+  if (key === " ") return target.closest(SPACE_PRESSES) !== null;
+  return key.startsWith("Arrow") && usesArrows(target);
+}
+
 export interface UseTourOptions {
   steps?: readonly TourStep<TourController>[];
   scheduler?: Scheduler;
@@ -129,7 +142,8 @@ export interface Tour {
 
 /**
  * The guided tour in the workspace: starts on `?tour=1` (then strips it, so a reload doesn't restart
- * it), takes Space, ←, →, C and Esc, and pauses when the user clicks in the app.
+ * it), takes Space, ←, →, C and Esc, and pauses when the user clicks in the app or works it from the
+ * keyboard.
  */
 export function useTour(
   controller: TourController | null,
@@ -174,22 +188,29 @@ export function useTour(
       Escape: () => session.runner?.exit(),
     };
     function onKeyDown(event: KeyboardEvent) {
-      if (event.defaultPrevented || event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
-      const action = shortcuts[event.key];
-      if (!action) return;
+      // An open dialog (How it works) has the keyboard: every key is its own.
+      if (document.querySelector("dialog[open]")) return;
+      // A lone modifier, or a browser or system shortcut (Cmd+C, a screen recorder's hotkey), is no one's step.
+      if (MODIFIERS.has(event.key) || event.altKey || event.ctrlKey || event.metaKey) return;
       const target = event.target instanceof Element ? event.target : null;
-      if (target && isTyping(target)) return;
-      if (target && event.key.startsWith("Arrow") && usesArrows(target)) return;
-      // Esc closes an open dialog (How it works) first.
-      if (event.key === "Escape" && document.querySelector("dialog[open]")) return;
-      event.preventDefault();
-      action();
+      const onTourControls = target?.closest(`[${TOUR_UI_ATTRIBUTE}]`) != null;
+      // Space and Enter press the tour's own buttons, which do the right thing once.
+      if (onTourControls && (event.key === " " || event.key === "Enter")) return;
+      const action = shortcuts[event.key];
+      if (action && !event.defaultPrevented && !(target && leftToTarget(event.key, target))) {
+        event.preventDefault();
+        if (!event.repeat) action();
+        return;
+      }
+      // Anything else (Enter or Space on the app's buttons, typing, arrows on its tabs): the user takes over.
+      if (!onTourControls) session.runner?.takeOver();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [active, session, toggleCaptions]);
 
-  // The user clicking in the app takes over: pause, and let their click do what it does.
+  // The user clicking in the app takes over (as does working it from the keyboard, above): pause, and
+  // let their click do what it does.
   useEffect(() => {
     if (!running) return;
     function onPointerDown(event: PointerEvent) {
