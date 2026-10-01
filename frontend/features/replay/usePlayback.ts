@@ -34,6 +34,7 @@ export interface Playback {
   seek: (t: number) => void;
   reset: () => void;
   cycleSpeed: () => void;
+  setSpeed: (speed: Speed) => void;
 }
 
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
@@ -138,6 +139,7 @@ export function usePlayback({ total, steps, resetKey }: PlaybackOptions): Playba
   }, [commit]);
 
   const cycleSpeed = useCallback(() => setSpeedIndex((index) => (index + 1) % SPEEDS.length), []);
+  const setSpeed = useCallback((next: Speed) => setSpeedIndex(Math.max(0, SPEEDS.indexOf(next))), []);
 
-  return { t, playing, active, ended, speed, play, pause, seek, reset, cycleSpeed };
+  return { t, playing, active, ended, speed, play, pause, seek, reset, cycleSpeed, setSpeed };
 }

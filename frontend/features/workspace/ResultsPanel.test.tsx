@@ -56,6 +56,38 @@ describe("ResultsPanel", () => {
     expect(screen.getByRole("tab", { name: "Itinerary" })).toHaveAttribute("aria-selected", "true");
   });
 
+  it("can be controlled: shows the tab it is given and reports the one picked", async () => {
+    const onTabChange = vi.fn();
+    const props = { onSelectStop: vi.fn(), onEdit: vi.fn(), onNewTrip: vi.fn(), onTabChange };
+    const { rerender } = render(<ResultsPanel trip={sampleTrip} selectedStopId={null} tab="rules" {...props} />);
+    expect(screen.getByRole("tab", { name: "Rules 7/7" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("14-hour driving window")).toBeVisible();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Directions" }));
+    expect(onTabChange).toHaveBeenCalledWith("directions");
+    expect(screen.getByRole("tab", { name: "Rules 7/7" })).toHaveAttribute("aria-selected", "true");
+
+    rerender(<ResultsPanel trip={sampleTrip} selectedStopId={null} tab="directions" {...props} />);
+    expect(screen.getByRole("tabpanel", { name: "Directions" })).toBeVisible();
+  });
+
+  it("reports tab changes when it keeps its own tab", async () => {
+    const onTabChange = vi.fn();
+    render(
+      <ResultsPanel
+        trip={sampleTrip}
+        selectedStopId={null}
+        onSelectStop={vi.fn()}
+        onEdit={vi.fn()}
+        onNewTrip={vi.fn()}
+        onTabChange={onTabChange}
+      />,
+    );
+    await userEvent.click(screen.getByRole("tab", { name: "Assumptions" }));
+    expect(onTabChange).toHaveBeenCalledWith("assumptions");
+    expect(screen.getByText(/Only driving is barred/)).toBeVisible();
+  });
+
   it("edits or starts over", async () => {
     const props = setup();
     await userEvent.click(screen.getByRole("button", { name: "Edit trip" }));

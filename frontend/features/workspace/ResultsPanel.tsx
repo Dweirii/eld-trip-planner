@@ -11,7 +11,7 @@ import { showDailyLogs } from "@/features/log-sheets/LogSheets";
 import type { Trip } from "@/lib/api/types";
 import { cityOf, clockTime, duration, isoDate, logHours, miles, minutesBetween, shortDate } from "@/lib/format";
 
-type Tab = "itinerary" | "directions" | "rules" | "assumptions";
+export type ResultsTab = "itinerary" | "directions" | "rules" | "assumptions";
 
 export interface ResultsPanelProps {
   trip: Trip;
@@ -26,6 +26,10 @@ export interface ResultsPanelProps {
   drivingToStopId?: string | null;
   /** Keep the itinerary's current row in view (while the replay plays). */
   followCurrent?: boolean;
+  /** The tab shown. Pass it to control the tab (the guided tour does); leave it out and the panel keeps its own. */
+  tab?: ResultsTab;
+  /** Called with the tab the user picks. */
+  onTabChange?: (tab: ResultsTab) => void;
 }
 
 /** Memoised: a replay re-renders the workspace every frame, but the panel only when the current stop changes. */
@@ -39,8 +43,15 @@ export const ResultsPanel = memo(function ResultsPanel({
   currentStopId = null,
   drivingToStopId = null,
   followCurrent = false,
+  tab: controlledTab,
+  onTabChange,
 }: ResultsPanelProps) {
-  const [tab, setTab] = useState<Tab>("itinerary");
+  const [ownTab, setOwnTab] = useState<ResultsTab>("itinerary");
+  const tab = controlledTab ?? ownTab;
+  const selectTab = (next: ResultsTab) => {
+    setOwnTab(next);
+    onTabChange?.(next);
+  };
   const tabsId = useId();
   const { inputs, summary } = trip;
   const passed = trip.compliance.filter((check) => check.passed).length;
@@ -48,7 +59,7 @@ export const ResultsPanel = memo(function ResultsPanel({
     .map((place) => cityOf(place.label))
     .join(" → ");
   const allPassed = passed === trip.compliance.length;
-  const tabs: TabItem<Tab>[] = [
+  const tabs: TabItem<ResultsTab>[] = [
     { id: "itinerary", label: "Itinerary" },
     { id: "directions", label: "Directions" },
     {
@@ -109,7 +120,7 @@ export const ResultsPanel = memo(function ResultsPanel({
         label="Trip details"
         items={tabs}
         selected={tab}
-        onSelect={setTab}
+        onSelect={selectTab}
         className="flex gap-0.5 rounded-full bg-[#eef4f4] p-1"
         // Four tabs share a ~300px panel: size each to its label and keep it on one line.
         tabClassName={(selected) =>

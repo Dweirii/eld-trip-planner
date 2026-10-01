@@ -152,6 +152,14 @@ describe("usePlayback", () => {
     expect(result.current.speed).toBe(1);
   });
 
+  it("sets a speed directly", () => {
+    const { result } = setup();
+    act(() => result.current.setSpeed(2));
+    expect(result.current.speed).toBe(2);
+    act(() => result.current.setSpeed(1));
+    expect(result.current.speed).toBe(1);
+  });
+
   it("steps from stop to stop about once a second when the user prefers reduced motion", () => {
     reducedMotion(true);
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });

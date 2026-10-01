@@ -76,6 +76,27 @@ describe("LogSheets", () => {
     expect(sheetWrappers()[1]).not.toHaveClass("hidden");
   });
 
+  it("can be controlled: shows the day it is given and reports the one picked", async () => {
+    const onActiveDayChange = vi.fn();
+    const { rerender } = setup({ activeDay: 1, onActiveDayChange });
+    expect(visibleDays()).toEqual([false, true]);
+
+    await userEvent.click(screen.getByRole("tab", { name: "Day 1 · Thu, Oct 1" }));
+    expect(onActiveDayChange).toHaveBeenCalledWith(0);
+    expect(visibleDays()).toEqual([false, true]);
+
+    rerender({ activeDay: 0, onActiveDayChange });
+    expect(visibleDays()).toEqual([true, false]);
+  });
+
+  it("reports day changes when it keeps its own day", async () => {
+    const onActiveDayChange = vi.fn();
+    setup({ onActiveDayChange });
+    await userEvent.click(screen.getByRole("tab", { name: "Day 2 · Fri, Oct 2" }));
+    expect(onActiveDayChange).toHaveBeenCalledWith(1);
+    expect(visibleDays()).toEqual([false, true]);
+  });
+
   it("prints every sheet", async () => {
     const print = vi.spyOn(window, "print").mockImplementation(() => {});
     render(<LogSheets trip={sampleTrip} selectedStopId={null} onSelectStop={vi.fn()} />);
@@ -131,6 +152,21 @@ describe("LogSheets", () => {
       expect(visibleDays()).toEqual([true, false]);
       rerender({ playhead: { isoDate: "2026-10-02", minuteOfDay: 60, playing: false } });
       expect(visibleDays()).toEqual([false, true]);
+    });
+
+    it("asks a parent that controls the day to follow the playhead", () => {
+      const onActiveDayChange = vi.fn();
+      const { rerender } = setup({
+        activeDay: 0,
+        onActiveDayChange,
+        playhead: { isoDate: "2026-10-01", minuteOfDay: 1400, playing: true },
+      });
+      expect(onActiveDayChange).not.toHaveBeenCalled();
+      rerender({ activeDay: 0, onActiveDayChange, playhead: { isoDate: "2026-10-02", minuteOfDay: 10, playing: true } });
+      expect(onActiveDayChange).toHaveBeenCalledExactlyOnceWith(1);
+      rerender({ activeDay: 1, onActiveDayChange, playhead: { isoDate: "2026-10-02", minuteOfDay: 20, playing: true } });
+      expect(visibleDays()).toEqual([false, true]);
+      expect(onActiveDayChange).toHaveBeenCalledOnce();
     });
 
     it("keeps showing every day if the user asked for all", async () => {
