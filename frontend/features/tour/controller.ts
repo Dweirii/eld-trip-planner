@@ -55,7 +55,8 @@ export interface TourController extends TourActions {
 /** The workspace's controller for the guided tour (null outside a workspace). */
 export const TourControllerContext = createContext<TourController | null>(null);
 
-function createStore(initialState: TourAppState, initialActions: TourActions) {
+/** The controller over state and actions that `sync` replaces after every render (exported for tests). */
+export function createTourStore(initialState: TourAppState, initialActions: TourActions) {
   let state = initialState;
   let actions = initialActions;
   let version = 0;
@@ -132,7 +133,7 @@ function createStore(initialState: TourAppState, initialActions: TourActions) {
 
 /** A stable controller over the workspace's latest state and actions (synced after every render). */
 export function useTourController(state: TourAppState, actions: TourActions): TourController {
-  const [store] = useState(() => createStore(state, actions));
+  const [store] = useState(() => createTourStore(state, actions));
   useLayoutEffect(() => {
     store.sync(state, actions);
   });
