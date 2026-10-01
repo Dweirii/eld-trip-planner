@@ -15,6 +15,8 @@ from .types import Place, Route
 
 GEOCODE_TTL = timedelta(days=30)
 ROUTE_PROFILE = "driving-hgv"
+# Bump when the cached Route payload changes shape, so older entries are never served.
+ROUTE_CACHE_VERSION = "v2"  # v2: legs carry turn-by-turn steps
 
 
 @functools.cache
@@ -72,8 +74,9 @@ def resolve_place(
 
 
 def get_route(points: Sequence[tuple[float, float]]) -> Route:
-    """Truck route through (lat, lng) points, cached by profile and rounded coordinates."""
-    key = f"{ROUTE_PROFILE}:" + ";".join(f"{lat:.5f},{lng:.5f}" for lat, lng in points)
+    """Truck route through (lat, lng) points, cached by version, profile and rounded coordinates."""
+    rounded = ";".join(f"{lat:.5f},{lng:.5f}" for lat, lng in points)
+    key = f"{ROUTE_CACHE_VERSION}:{ROUTE_PROFILE}:{rounded}"
     cached = RouteCache.objects.filter(key=key).first()
     if cached is not None:
         return Route.from_dict(cached.payload)

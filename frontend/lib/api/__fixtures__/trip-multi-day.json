@@ -1,0 +1,488 @@
+{
+  "id": "SIKooS3SKx",
+  "created_at": "2026-10-01T10:22:53+00:00",
+  "engine_version": "1.0.0",
+  "inputs": {
+    "current_location": {
+      "label": "Chicago, IL",
+      "lat": 41.8781,
+      "lng": -87.6298
+    },
+    "pickup_location": {
+      "label": "St. Louis, MO",
+      "lat": 38.627,
+      "lng": -90.1994
+    },
+    "dropoff_location": {
+      "label": "Dallas, TX",
+      "lat": 32.7767,
+      "lng": -96.797
+    },
+    "current_cycle_used_hours": 12.5,
+    "start_time": "2026-10-01T06:00",
+    "log_details": {
+      "driver_name": "Alex Driver",
+      "co_driver_name": "",
+      "carrier_name": "Milepost Freight Co.",
+      "main_office_address": "Green Bay, WI",
+      "home_terminal_address": "Green Bay, WI",
+      "truck_number": "TRK 1042",
+      "trailer_number": "TRL 88317",
+      "shipping_document": "BOL-000142",
+      "shipper_commodity": "General freight"
+    }
+  },
+  "home_time_zone": {
+    "iana": "America/Chicago",
+    "abbreviation": "CDT",
+    "utc_offset": "-05:00"
+  },
+  "summary": {
+    "total_miles": 972.1,
+    "driving_hours": 17.75,
+    "on_duty_hours": 19.75,
+    "starts_at": "2026-10-01T06:00:00-05:00",
+    "arrives_at": "2026-10-02T11:45:00-05:00",
+    "days": 2,
+    "stops": {
+      "fuel": 0,
+      "break": 0,
+      "rest": 1,
+      "restart": 0
+    }
+  },
+  "route": {
+    "geometry": {
+      "type": "LineString",
+      "coordinates": [
+        [
+          -87.6298,
+          41.8781
+        ],
+        [
+          -90.1994,
+          38.627
+        ],
+        [
+          -96.797,
+          32.7767
+        ]
+      ]
+    },
+    "legs": [
+      {
+        "from": "Chicago, IL",
+        "to": "St. Louis, MO",
+        "miles": 314.8,
+        "hours": 5.72,
+        "steps": [
+          {
+            "instruction": "Head toward St. Louis, MO",
+            "road": "I-55 S",
+            "miles": 31.5,
+            "minutes": 34
+          },
+          {
+            "instruction": "Continue onto I-44 W",
+            "road": "I-44 W",
+            "miles": 283.3,
+            "minutes": 309
+          },
+          {
+            "instruction": "Arrive at your destination",
+            "road": "",
+            "miles": 0.0,
+            "minutes": 0
+          }
+        ]
+      },
+      {
+        "from": "St. Louis, MO",
+        "to": "Dallas, TX",
+        "miles": 657.3,
+        "hours": 11.95,
+        "steps": [
+          {
+            "instruction": "Head toward Dallas, TX",
+            "road": "I-40 W",
+            "miles": 65.7,
+            "minutes": 72
+          },
+          {
+            "instruction": "Continue onto I-30 W",
+            "road": "I-30 W",
+            "miles": 591.6,
+            "minutes": 645
+          },
+          {
+            "instruction": "Arrive at your destination",
+            "road": "",
+            "miles": 0.0,
+            "minutes": 0
+          }
+        ]
+      }
+    ]
+  },
+  "stops": [
+    {
+      "id": "s0",
+      "kind": "start",
+      "status": "driving",
+      "starts_at": "2026-10-01T06:00:00-05:00",
+      "ends_at": "2026-10-01T06:00:00-05:00",
+      "duration_minutes": 0,
+      "mile": 0.0,
+      "lat": 41.8781,
+      "lng": -87.6298,
+      "place": "Chicago, IL"
+    },
+    {
+      "id": "s3",
+      "kind": "pickup",
+      "status": "on_duty",
+      "starts_at": "2026-10-01T11:45:00-05:00",
+      "ends_at": "2026-10-01T12:45:00-05:00",
+      "duration_minutes": 60,
+      "mile": 314.8,
+      "lat": 38.627,
+      "lng": -90.1994,
+      "place": "St. Louis, MO"
+    },
+    {
+      "id": "s5",
+      "kind": "rest",
+      "status": "sleeper_berth",
+      "starts_at": "2026-10-01T18:00:00-05:00",
+      "ends_at": "2026-10-02T04:00:00-05:00",
+      "duration_minutes": 600,
+      "mile": 603.5,
+      "lat": 36.03545,
+      "lng": -93.12198,
+      "place": "Jasper, AR"
+    },
+    {
+      "id": "s7",
+      "kind": "dropoff",
+      "status": "on_duty",
+      "starts_at": "2026-10-02T10:45:00-05:00",
+      "ends_at": "2026-10-02T11:45:00-05:00",
+      "duration_minutes": 60,
+      "mile": 972.1,
+      "lat": 32.7767,
+      "lng": -96.797,
+      "place": "Dallas, TX"
+    }
+  ],
+  "daily_logs": [
+    {
+      "date": "2026-10-01",
+      "day_number": 1,
+      "from": "Chicago, IL",
+      "to": "Jasper, AR",
+      "miles_today": 603.5,
+      "segments": [
+        {
+          "status": "off_duty",
+          "start_minute": 0,
+          "end_minute": 360
+        },
+        {
+          "status": "driving",
+          "start_minute": 360,
+          "end_minute": 705
+        },
+        {
+          "status": "on_duty",
+          "start_minute": 705,
+          "end_minute": 765
+        },
+        {
+          "status": "driving",
+          "start_minute": 765,
+          "end_minute": 1080
+        },
+        {
+          "status": "sleeper_berth",
+          "start_minute": 1080,
+          "end_minute": 1440
+        }
+      ],
+      "totals": {
+        "off_duty": 6.0,
+        "sleeper_berth": 6.0,
+        "driving": 11.0,
+        "on_duty": 1.0
+      },
+      "remarks": [
+        {
+          "minute": 360,
+          "time": "06:00",
+          "place": "Chicago, IL",
+          "note": "Driving"
+        },
+        {
+          "minute": 705,
+          "time": "11:45",
+          "place": "St. Louis, MO",
+          "note": "Pickup \u2014 on duty"
+        },
+        {
+          "minute": 765,
+          "time": "12:45",
+          "place": "St. Louis, MO",
+          "note": "Driving"
+        },
+        {
+          "minute": 1080,
+          "time": "18:00",
+          "place": "Jasper, AR",
+          "note": "10-h rest \u2014 sleeper berth"
+        }
+      ],
+      "brackets": [
+        {
+          "start_minute": 705,
+          "end_minute": 765,
+          "place": "St. Louis, MO"
+        },
+        {
+          "start_minute": 1080,
+          "end_minute": 1440,
+          "place": "Jasper, AR"
+        }
+      ],
+      "header": {
+        "driver_name": "Alex Driver",
+        "co_driver_name": "",
+        "carrier_name": "Milepost Freight Co.",
+        "main_office_address": "Green Bay, WI",
+        "home_terminal_address": "Green Bay, WI",
+        "truck_number": "TRK 1042",
+        "trailer_number": "TRL 88317",
+        "shipping_document": "BOL-000142",
+        "shipper_commodity": "General freight",
+        "time_zone": "America/Chicago (CDT, UTC-05:00)"
+      },
+      "recap": {
+        "on_duty_today": 12.0,
+        "a_last_7_days": 24.5,
+        "b_available_tomorrow": 45.5,
+        "c_last_5_days": 24.5
+      }
+    },
+    {
+      "date": "2026-10-02",
+      "day_number": 2,
+      "from": "Jasper, AR",
+      "to": "Dallas, TX",
+      "miles_today": 368.6,
+      "segments": [
+        {
+          "status": "sleeper_berth",
+          "start_minute": 0,
+          "end_minute": 240
+        },
+        {
+          "status": "driving",
+          "start_minute": 240,
+          "end_minute": 645
+        },
+        {
+          "status": "on_duty",
+          "start_minute": 645,
+          "end_minute": 705
+        },
+        {
+          "status": "off_duty",
+          "start_minute": 705,
+          "end_minute": 1440
+        }
+      ],
+      "totals": {
+        "off_duty": 12.25,
+        "sleeper_berth": 4.0,
+        "driving": 6.75,
+        "on_duty": 1.0
+      },
+      "remarks": [
+        {
+          "minute": 0,
+          "time": "00:00",
+          "place": "Jasper, AR",
+          "note": "10-h rest \u2014 sleeper berth (continued)"
+        },
+        {
+          "minute": 240,
+          "time": "04:00",
+          "place": "Jasper, AR",
+          "note": "Driving"
+        },
+        {
+          "minute": 645,
+          "time": "10:45",
+          "place": "Dallas, TX",
+          "note": "Dropoff \u2014 on duty"
+        },
+        {
+          "minute": 705,
+          "time": "11:45",
+          "place": "Dallas, TX",
+          "note": "Trip complete \u2014 off duty"
+        }
+      ],
+      "brackets": [
+        {
+          "start_minute": 0,
+          "end_minute": 240,
+          "place": "Jasper, AR"
+        },
+        {
+          "start_minute": 645,
+          "end_minute": 705,
+          "place": "Dallas, TX"
+        }
+      ],
+      "header": {
+        "driver_name": "Alex Driver",
+        "co_driver_name": "",
+        "carrier_name": "Milepost Freight Co.",
+        "main_office_address": "Green Bay, WI",
+        "home_terminal_address": "Green Bay, WI",
+        "truck_number": "TRK 1042",
+        "trailer_number": "TRL 88317",
+        "shipping_document": "BOL-000142",
+        "shipper_commodity": "General freight",
+        "time_zone": "America/Chicago (CDT, UTC-05:00)"
+      },
+      "recap": {
+        "on_duty_today": 7.75,
+        "a_last_7_days": 32.25,
+        "b_available_tomorrow": 37.75,
+        "c_last_5_days": 32.25
+      }
+    }
+  ],
+  "compliance": [
+    {
+      "id": "driving_11h",
+      "title": "11-hour driving limit",
+      "citation": "49 CFR 395.3(a)(3)",
+      "limit": 11.0,
+      "observed": 11.0,
+      "unit": "h",
+      "passed": true
+    },
+    {
+      "id": "window_14h",
+      "title": "14-hour driving window",
+      "citation": "49 CFR 395.3(a)(2)",
+      "limit": 14.0,
+      "observed": 12.0,
+      "unit": "h",
+      "passed": true
+    },
+    {
+      "id": "break_30m",
+      "title": "30-minute break after 8 hours of driving",
+      "citation": "49 CFR 395.3(a)(3)(ii)",
+      "limit": 8.0,
+      "observed": 6.75,
+      "unit": "h",
+      "passed": true
+    },
+    {
+      "id": "cycle_70h",
+      "title": "70-hour / 8-day limit",
+      "citation": "49 CFR 395.3(b)(2)",
+      "limit": 70.0,
+      "observed": 31.25,
+      "unit": "h",
+      "passed": true
+    },
+    {
+      "id": "fuel_1000mi",
+      "title": "Fuel at least every 1,000 miles",
+      "citation": "Assessment brief",
+      "limit": 1000.0,
+      "observed": 972.1,
+      "unit": "mi",
+      "passed": true
+    },
+    {
+      "id": "pickup_dropoff_1h",
+      "title": "1 hour on duty at pickup and dropoff",
+      "citation": "Assessment brief",
+      "limit": 1.0,
+      "observed": 1.0,
+      "unit": "h",
+      "passed": true
+    },
+    {
+      "id": "log_totals_24h",
+      "title": "Every daily log totals 24 hours",
+      "citation": "49 CFR 395.8",
+      "limit": 24.0,
+      "observed": 24.0,
+      "unit": "h",
+      "passed": true
+    }
+  ],
+  "assumptions": {
+    "rules": [
+      {
+        "label": "Driving limit per shift",
+        "value": "11 h",
+        "source": "49 CFR 395.3(a)(3)"
+      },
+      {
+        "label": "Driving window",
+        "value": "14 h",
+        "source": "49 CFR 395.3(a)(2)"
+      },
+      {
+        "label": "Break required after driving",
+        "value": "30 min after 8 h",
+        "source": "49 CFR 395.3(a)(3)(ii)"
+      },
+      {
+        "label": "Daily rest",
+        "value": "10 h",
+        "source": "49 CFR 395.3(a)(1)"
+      },
+      {
+        "label": "Cycle limit",
+        "value": "70 h / 8 days",
+        "source": "49 CFR 395.3(b)(2)"
+      },
+      {
+        "label": "Cycle restart",
+        "value": "34 h",
+        "source": "49 CFR 395.3(c)"
+      },
+      {
+        "label": "Fueling",
+        "value": "every 1,000 mi, 30 min",
+        "source": "Assessment brief (interval); duration assumed"
+      },
+      {
+        "label": "Pickup / dropoff",
+        "value": "60 min / 60 min on duty",
+        "source": "Assessment brief"
+      }
+    ],
+    "notes": [
+      "Property-carrying driver on the 70-hour/8-day schedule; no adverse driving conditions.",
+      "Trip sequence: drive to pickup, 1 hour on duty, drive to dropoff, 1 hour on duty.",
+      "The driver starts with full 11-hour and 14-hour allowances (at least 10 hours off before the trip).",
+      "Cycle hours already used count toward 70 hours for the whole trip and never roll off; a 34-hour restart resets them.",
+      "The truck starts with a full tank and fuels at least every 1,000 miles (30 minutes on duty).",
+      "Any 30 consecutive minutes not driving satisfies the 30-minute break (off duty, sleeper berth, fueling, pickup or dropoff).",
+      "Daily 10-hour rests are logged in the sleeper berth; breaks and 34-hour restarts off duty.",
+      "Only driving is barred once the 11-hour, 14-hour or 70-hour limit is reached; on-duty work such as fueling, pickup or dropoff may continue, so a daily recap can show more than 70 on-duty hours.",
+      "Times use the home terminal's time zone (the current location) at its UTC offset at trip start.",
+      "Drive times come from a truck-profile route and are rounded to the 15-minute log grid.",
+      "Log-sheet header details (driver, carrier, truck/trailer, shipping document) are optional inputs with sensible defaults."
+    ]
+  }
+}

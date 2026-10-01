@@ -123,6 +123,13 @@ class GeometrySerializer(serializers.Serializer):
     coordinates = serializers.ListField(child=serializers.ListField(child=serializers.FloatField()))
 
 
+class RouteStepSerializer(serializers.Serializer):
+    instruction = serializers.CharField()
+    road = serializers.CharField(help_text='The road this step runs on; "" when it has no name.')
+    miles = serializers.FloatField()
+    minutes = serializers.IntegerField()
+
+
 # "from" is a Python keyword, so these two serializers are built with type().
 RouteLegSerializer = type(
     "RouteLegSerializer",
@@ -132,6 +139,13 @@ RouteLegSerializer = type(
         "to": serializers.CharField(),
         "miles": serializers.FloatField(),
         "hours": serializers.FloatField(),
+        "steps": RouteStepSerializer(
+            many=True,
+            help_text=(
+                "Turn-by-turn directions; consecutive steps on the same road are merged. "
+                "Empty when the leg has no driving or the trip was saved before directions existed."
+            ),
+        ),
     },
 )
 

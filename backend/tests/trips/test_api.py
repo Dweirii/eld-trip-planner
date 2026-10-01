@@ -1,6 +1,7 @@
 import pytest
 
 from tests.fakes import FakeRouter
+from trips.models import Trip
 
 pytestmark = pytest.mark.django_db
 
@@ -59,6 +60,40 @@ def test_plans_a_multi_day_trip(client):
     assert [leg["from"] for leg in trip["route"]["legs"]] == ["Chicago, IL", "St. Louis, MO"]
 
 
+def test_each_leg_carries_its_turn_by_turn_directions(client):
+    legs = post(client, body()).json()["route"]["legs"]
+
+    first, second = (leg["steps"] for leg in legs)
+    assert first[0] == {
+        "instruction": "Head toward St. Louis, MO",
+        "road": "I-55 S",
+        "miles": 31.5,
+        "minutes": 34,
+    }
+    assert [step["instruction"] for step in first] == [
+        "Head toward St. Louis, MO",
+        "Continue onto I-44 W",
+        "Arrive at your destination",
+    ]
+    assert second[0]["instruction"] == "Head toward Dallas, TX"
+    for leg in legs:
+        assert sum(step["miles"] for step in leg["steps"]) == pytest.approx(leg["miles"], abs=0.1)
+
+
+def test_a_trip_saved_before_directions_existed_is_still_served(client):
+    created = post(client, body()).json()
+    trip = Trip.objects.get(pk=created["id"])
+    for leg in trip.result["route"]["legs"]:
+        del leg["steps"]
+    trip.save()
+
+    response = client.get(f"/api/trips/{created['id']}/")
+
+    assert response.status_code == 200
+    assert [leg["steps"] for leg in response.json()["route"]["legs"]] == [[], []]
+    assert response.json()["route"]["legs"][0]["miles"] == created["route"]["legs"][0]["miles"]
+
+
 def test_saved_trip_round_trips(client):
     created = post(client, body()).json()
     fetched = client.get(f"/api/trips/{created['id']}/")
@@ -77,6 +112,9 @@ def test_current_location_equal_to_pickup_routes_two_points(client):
 
     assert response.status_code == 201
     assert len(FakeRouter.calls[-1]) == 2
+    already_there, to_dropoff = response.json()["route"]["legs"]
+    assert already_there["miles"] == 0 and already_there["steps"] == []
+    assert to_dropoff["steps"][0]["instruction"] == "Head toward Dallas, TX"
     stops = response.json()["stops"]
     assert stops[1]["kind"] == "pickup"
     assert stops[1]["mile"] == 0

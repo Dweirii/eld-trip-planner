@@ -2,7 +2,6 @@
 /requirements/
 /.superpowers/
 CLAUDE.md
-AGENTS.md
 .claude/
 
 # ── Secrets ─────────────────────────────────────────
@@ -34,6 +33,7 @@ node_modules/
 .pnp
 .pnp.*
 .next/
+frontend/public/maplibre/
 out/
 coverage/
 *.tsbuildinfo
@@ -42,6 +42,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+playwright-report/
+test-results/
 
 # ── Vercel ──────────────────────────────────────────
 .vercel

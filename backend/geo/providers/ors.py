@@ -6,7 +6,7 @@ import httpx
 from django.conf import settings
 
 from ..errors import RouteNotFound, UpstreamUnavailable
-from ..types import Route, RouteLeg
+from ..types import Route, RouteLeg, RouteStep
 
 PROFILE = "driving-hgv"
 NOT_RESPONDING = "The routing service is not responding. Please try again."
@@ -53,19 +53,13 @@ class OrsRouter:
             raise self._error(response)
         try:
             feature = response.json()["features"][0]
-            segments = feature["properties"]["segments"]
+            legs = tuple(_leg(s) for s in feature["properties"]["segments"])
             waypoints = tuple(feature["properties"]["way_points"])
             coordinates = tuple((c[0], c[1]) for c in feature["geometry"]["coordinates"])
-        except (ValueError, KeyError, IndexError, TypeError) as exc:
+        except (ValueError, KeyError, IndexError, TypeError, AttributeError) as exc:
             raise UpstreamUnavailable(
                 "The routing service returned an unexpected response."
             ) from exc
-        legs = tuple(
-            RouteLeg(
-                miles=float(s.get("distance", 0.0)), duration_min=float(s.get("duration", 0.0)) / 60
-            )
-            for s in segments
-        )
         return Route(legs=legs, coordinates=coordinates, waypoints=waypoints)
 
     def _post(self, body: dict) -> httpx.Response:
@@ -96,3 +90,29 @@ class OrsRouter:
         return UpstreamUnavailable(
             f"The routing service failed (HTTP {response.status_code}). Please try again."
         )
+
+
+def _leg(segment: dict) -> RouteLeg:
+    """One ORS segment (stop to stop) as a leg with its turn-by-turn steps."""
+    steps = segment.get("steps", [])
+    last = len(steps) - 1
+    return RouteLeg(
+        miles=float(segment.get("distance", 0.0)),
+        duration_min=float(segment.get("duration", 0.0)) / 60,
+        steps=tuple(
+            _step(step)
+            for i, step in enumerate(steps)
+            # Zero-length manoeuvres say nothing; the leg's closing "Arrive at …" always stays.
+            if i == last or float(step.get("distance", 0.0)) > 0
+        ),
+    )
+
+
+def _step(step: dict) -> RouteStep:
+    name = step.get("name") or ""
+    return RouteStep(
+        instruction=step.get("instruction", ""),
+        road="" if name == "-" else name,  # ORS writes "-" for an unnamed road
+        miles=float(step.get("distance", 0.0)),
+        minutes=float(step.get("duration", 0.0)) / 60,
+    )
