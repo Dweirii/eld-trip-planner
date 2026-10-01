@@ -30,10 +30,8 @@ const PAUSED = "Paused (press Space to continue)";
 
 /** Desktop: the map keeps this much more room at the bottom while the tour runs, for the caption card. */
 export const CAPTION_ROOM = 140;
-/** Desktop: the card leaves its corner for the top of the map when the spotlight's target is this much under it. */
+/** The card moves out of the way when this much of the spotlight's target is under it. */
 const DODGE_SHARE = 0.25;
-
-const isDesktop = () => window.matchMedia?.("(min-width: 1024px)")?.matches ?? false;
 
 /** The share of `target` that `card` covers. */
 function coveredShare(target: Box, card: Box): number {
@@ -48,8 +46,9 @@ export function TourOverlay(props: TourOverlayProps) {
   const { index, total, entry, caption, detail, paused, captions, target, raised = false } = props;
   const cardRef = useRef<HTMLElement>(null);
 
-  // Desktop: when the spotlight's target sits under the card (a log sheet's remarks), the card moves to
-  // the top of the screen until the spotlight moves on.
+  // When the spotlight's target sits under the card (a log sheet's remarks; on a phone, a map pin), the
+  // card moves out of the way (desktop: to the top of the map; small screens: to the bottom) until the
+  // spotlight moves on.
   const dodge = useCallback((box: Box | null) => {
     const card = cardRef.current;
     if (!card) return;
@@ -57,7 +56,7 @@ export function TourOverlay(props: TourOverlayProps) {
     const { transform } = getComputedStyle(card);
     const shift = transform && transform !== "none" ? new DOMMatrixReadOnly(transform).m42 : 0;
     const home = { top: rect.top - shift, left: rect.left, width: rect.width, height: rect.height };
-    const covered = box !== null && isDesktop() && coveredShare(box, home) > DODGE_SHARE;
+    const covered = box !== null && coveredShare(box, home) > DODGE_SHARE;
     if (covered !== (card.dataset.dodge !== undefined)) {
       if (covered) card.dataset.dodge = "";
       else delete card.dataset.dodge;
@@ -83,6 +82,7 @@ export function TourOverlay(props: TourOverlayProps) {
           // Desktop: bottom left over the map, level with the panel's bottom edge; docked or dodging,
           // at the top of the map instead (16px under the header).
           "lg:inset-x-auto lg:top-auto lg:bottom-[5.5rem] lg:left-[372px] lg:mx-0",
+          "data-[dodge]:translate-y-[calc(100svh-100%-4.5rem)]",
           "lg:data-[docked]:translate-y-[calc(-100svh+100%+9.5rem)] lg:data-[dodge]:translate-y-[calc(-100svh+100%+9.5rem)]",
           captions
             ? "max-w-[420px] rounded-2xl bg-white px-4 pb-3 pt-3.5 shadow-[0_14px_44px_rgb(4_59_75/0.28)] lg:w-[400px]"
