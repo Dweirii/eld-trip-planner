@@ -17,8 +17,9 @@ function longLeg(count: number): RouteLeg {
   return { ...firstLeg, steps };
 }
 
-function stepsOf(leg: HTMLElement): string[] {
-  return within(within(leg).getByRole("list"))
+/** Each leg's step list is named by the leg's heading. */
+function stepsOf(leg: string | RegExp): string[] {
+  return within(screen.getByRole("list", { name: leg }))
     .getAllByRole("listitem")
     .map((item) => item.textContent ?? "");
 }
@@ -31,14 +32,15 @@ describe("Directions", () => {
       "Leg 1 · Chicago, IL → St. Louis, MO",
       "Leg 2 · St. Louis, MO → Dallas, TX",
     ]);
-    const leg1 = screen.getByRole("region", { name: "Leg 1 · Chicago, IL → St. Louis, MO" });
-    expect(within(leg1).getByText("315 mi · 5h43")).toBeInTheDocument();
-    expect(stepsOf(leg1)).toEqual([
+    expect(screen.getByText("315 mi · 5h43")).toBeInTheDocument();
+    expect(stepsOf("Leg 1 · Chicago, IL → St. Louis, MO")).toEqual([
       "Head toward St. Louis, MOon I-55 S32 mi",
       "Continue onto I-44 W283 mi",
       "Arrive at your destination",
     ]);
-    expect(screen.getByRole("region", { name: /Leg 2/ })).toHaveTextContent("Head toward Dallas, TX");
+    expect(stepsOf(/Leg 2/)[0]).toBe("Head toward Dallas, TXon I-40 W66 mi");
+    // Legs are headings, not landmarks: one region per leg would clutter landmark navigation.
+    expect(screen.queryByRole("region")).not.toBeInTheDocument();
     expect(screen.getByText(/Directions: openrouteservice.org \(heavy-goods vehicle profile\)/)).toHaveTextContent(
       "Directions: openrouteservice.org (heavy-goods vehicle profile). Rest, break and fuel stops are in the Itinerary.",
     );
@@ -50,30 +52,48 @@ describe("Directions", () => {
       steps: [{ instruction: "Turn left onto Main Street", road: "Main Street", miles: 0.4, minutes: 1 }],
     };
     render(<Directions legs={[leg]} />);
-    expect(stepsOf(screen.getByRole("region"))).toEqual(["Turn left onto Main Street0.4 mi"]);
+    expect(stepsOf(/Leg 1/)).toEqual(["Turn left onto Main Street0.4 mi"]);
+  });
+
+  it("notes the road unless the instruction names that exact road", () => {
+    const steps = [
+      { instruction: "Keep left onto I 55", road: "I 5", miles: 12, minutes: 11 },
+      {
+        instruction: "Keep right onto Dan Ryan Expressway (Local), I 94",
+        road: "Dan Ryan Expressway (Local)",
+        miles: 4.1,
+        minutes: 6,
+      },
+      { instruction: "Turn left onto main street", road: "Main Street", miles: 0.4, minutes: 1 },
+    ];
+    render(<Directions legs={[{ ...firstLeg, steps }]} />);
+    expect(stepsOf(/Leg 1/)).toEqual([
+      "Keep left onto I 55on I 512 mi",
+      "Keep right onto Dan Ryan Expressway (Local), I 944.1 mi",
+      "Turn left onto main street0.4 mi",
+    ]);
   });
 
   it("shows the first 8 steps of a long leg and expands to all of them", async () => {
     render(<Directions legs={[longLeg(12)]} />);
-    const leg = screen.getByRole("region", { name: /Leg 1/ });
-    expect(stepsOf(leg)).toHaveLength(8);
+    expect(stepsOf(/Leg 1/)).toHaveLength(8);
 
-    const toggle = within(leg).getByRole("button", { name: "Show all 12 steps to St. Louis" });
+    const toggle = screen.getByRole("button", { name: "Show all 12 steps to St. Louis" });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(toggle).toHaveAttribute("aria-controls", within(leg).getByRole("list").id);
+    expect(toggle).toHaveAttribute("aria-controls", screen.getByRole("list", { name: /Leg 1/ }).id);
 
     await userEvent.click(toggle);
-    expect(stepsOf(leg)).toHaveLength(12);
+    expect(stepsOf(/Leg 1/)).toHaveLength(12);
     expect(toggle).toHaveAttribute("aria-expanded", "true");
     expect(toggle).toHaveAccessibleName("Show fewer steps to St. Louis");
 
     await userEvent.click(toggle);
-    expect(stepsOf(leg)).toHaveLength(8);
+    expect(stepsOf(/Leg 1/)).toHaveLength(8);
   });
 
   it("needs no toggle when a leg fits", () => {
     render(<Directions legs={[longLeg(8)]} />);
-    expect(stepsOf(screen.getByRole("region"))).toHaveLength(8);
+    expect(stepsOf(/Leg 1/)).toHaveLength(8);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 

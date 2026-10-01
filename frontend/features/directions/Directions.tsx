@@ -7,9 +7,12 @@ import { cityOf, duration, miles, stepMiles } from "@/lib/format";
 /** Steps shown before a long leg needs "Show all". */
 const PREVIEW_STEPS = 8;
 
-/** The road, unless the instruction already names it ("Turn left onto Main Street"). */
+/** The road, unless the instruction already names that whole road ("I 55" doesn't name "I 5"). */
 function roadNote(step: RouteStep): string | null {
-  return step.road && !step.instruction.toLowerCase().includes(step.road.toLowerCase()) ? step.road : null;
+  if (!step.road) return null;
+  const escaped = step.road.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // Lookarounds rather than \b, which misfires next to punctuation such as "(Local)".
+  return new RegExp(`(?<!\\w)${escaped}(?!\\w)`, "i").test(step.instruction) ? null : step.road;
 }
 
 /** Turn-by-turn route instructions, one section per leg (served by the API from openrouteservice). */
@@ -30,12 +33,12 @@ function LegDirections({ leg, number }: { leg: RouteLeg; number: number }) {
   const [expanded, setExpanded] = useState(false);
   const headingId = useId();
   const listId = useId();
-  // Trips saved before directions existed may come back without them.
+  // The schema requires steps, but a frontend deployed before the API can still get old responses without them.
   const steps = leg.steps ?? [];
   const shown = expanded ? steps : steps.slice(0, PREVIEW_STEPS);
 
   return (
-    <section aria-labelledby={headingId}>
+    <div>
       <h3 id={headingId} className="text-[12px] font-extrabold leading-snug">
         {`Leg ${number} · ${leg.from} → ${leg.to}`}
       </h3>
@@ -50,6 +53,7 @@ function LegDirections({ leg, number }: { leg: RouteLeg; number: number }) {
       ) : (
         <ol
           id={listId}
+          aria-labelledby={headingId}
           className="mt-1 list-decimal divide-y divide-dashed divide-line pl-5 marker:text-[10.5px] marker:text-muted"
         >
           {shown.map((step, index) => {
@@ -83,6 +87,6 @@ function LegDirections({ leg, number }: { leg: RouteLeg; number: number }) {
           <span className="sr-only">{`to ${cityOf(leg.to)}`}</span>
         </button>
       )}
-    </section>
+    </div>
   );
 }
