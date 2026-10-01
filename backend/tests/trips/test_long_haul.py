@@ -58,6 +58,10 @@ def test_very_long_trip_routes_each_leg_separately(client):
     assert [len(points) for points in FakeRouter.calls] == [2, 2]
     assert len(trip["route"]["legs"]) == 2
     assert [leg["from"] for leg in trip["route"]["legs"]] == ["New York, NY", "Los Angeles, CA"]
+    assert [leg["steps"][0]["instruction"] for leg in trip["route"]["legs"]] == [
+        "Head toward Los Angeles, CA",
+        "Head toward Newark, NJ",
+    ]
     assert_compliant(trip)
 
 

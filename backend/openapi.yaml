@@ -520,11 +520,37 @@ components:
         hours:
           type: number
           format: double
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouteStep'
+          description: Turn-by-turn directions; consecutive steps on the same road
+            are merged. Empty when the leg has no driving or the trip was saved before
+            directions existed.
       required:
       - from
       - hours
       - miles
+      - steps
       - to
+    RouteStep:
+      type: object
+      properties:
+        instruction:
+          type: string
+        road:
+          type: string
+          description: The road this step runs on; "" when it has no name.
+        miles:
+          type: number
+          format: double
+        minutes:
+          type: integer
+      required:
+      - instruction
+      - miles
+      - minutes
+      - road
     RuleCheck:
       type: object
       properties:
