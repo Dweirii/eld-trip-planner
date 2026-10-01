@@ -1,5 +1,8 @@
 """Photon (komoot) geocoder: OpenStreetMap search that allows autocomplete (fair use)."""
 
+import re
+import unicodedata
+
 import httpx
 from django.conf import settings
 
@@ -43,12 +46,18 @@ class PhotonGeocoder:
         params = [("q", query), ("limit", str(limit * 2)), ("lang", "en"), ("bbox", US_BBOX)]
         if any(ch.isdigit() for ch in query):  # digits suggest a street address
             return self._search(params, limit)
-        places = self._search([*params, ("layer", "city")], limit)  # towns first
-        return places or self._search(params, limit)  # no town matched: search everything
+        towns = self._search(
+            [*params, ("layer", "city")],
+            limit,
+            keep=lambda props: names_town(query, props.get("name", "")),
+        )  # towns first, but only towns the query actually names
+        return towns or self._search(params, limit)  # e.g. "Port of Long Beach": search everything
 
-    def _search(self, params: list[tuple[str, str]], limit: int) -> list[Place]:
+    def _search(self, params: list[tuple[str, str]], limit: int, keep=None) -> list[Place]:
         places: list[Place] = []
         for feature in self._get("/api/", params).get("features", []):
+            if keep is not None and not keep(feature.get("properties", {})):
+                continue
             place = to_place(feature)
             if place and place.label not in {p.label for p in places}:
                 places.append(place)
@@ -74,6 +83,38 @@ class PhotonGeocoder:
             raise UpstreamUnavailable(
                 "Address search is temporarily unavailable. Please try again."
             ) from exc
+
+
+ABBREVIATIONS = {"st": "saint", "ste": "sainte", "ft": "fort", "mt": "mount"}
+
+
+def _words(text: str) -> list[str]:
+    plain = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().lower()
+    return [ABBREVIATIONS.get(word, word) for word in re.findall(r"[a-z0-9]+", plain)]
+
+
+STATE_SUFFIXES = sorted(
+    [_words(name) for name in US_STATES]
+    + [[code.lower()] for code in US_STATES.values()]
+    + [["us"], ["usa"]],
+    key=len,
+    reverse=True,
+)
+
+
+def names_town(query: str, town: str) -> bool:
+    """True when every word of the query's place part starts a word of ``town``.
+
+    "St. Louis, MO" names "Saint Louis" and "chic" names "Chicago", but "Port of Long Beach"
+    does not name the town "Long Beach". A trailing state ("Dallas TX") is ignored.
+    """
+    wanted = _words(query.split(",")[0])
+    for state in STATE_SUFFIXES:
+        if len(wanted) > len(state) and wanted[-len(state) :] == state:
+            wanted = wanted[: -len(state)]
+            break
+    town_words = _words(town)
+    return all(any(word.startswith(part) for word in town_words) for part in wanted)
 
 
 def to_place(feature: dict) -> Place | None:

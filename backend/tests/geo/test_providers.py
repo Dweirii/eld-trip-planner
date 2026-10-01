@@ -89,6 +89,59 @@ def test_photon_widens_a_town_search_that_finds_nothing():
         assert first[key] == second[key]
 
 
+def feature(name: str, state: str, lng: float, lat: float, **props) -> dict:
+    properties = {"name": name, "state": state, "countrycode": "US", **props}
+    return {"geometry": {"coordinates": [lng, lat]}, "properties": properties}
+
+
+def town_then_everything(towns: list[dict], everything: list[dict], seen: list) -> httpx.Client:
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        features = towns if "layer" in request.url.params else everything
+        return httpx.Response(200, json={"type": "FeatureCollection", "features": features})
+
+    return httpx.Client(transport=httpx.MockTransport(handler))
+
+
+def test_photon_widens_when_the_only_towns_merely_share_a_word_with_the_query():
+    seen: list[httpx.Request] = []
+    long_beach_in = feature("Long Beach", "Indiana", -86.88, 41.74)
+    port = feature("Port of Long Beach", "California", -118.21, 33.75, city="Long Beach")
+    geocoder = PhotonGeocoder(
+        base_url="https://photon.test",
+        client=town_then_everything([long_beach_in], [port], seen),
+    )
+
+    places = geocoder.search("Port of Long Beach")
+
+    assert [p.label for p in places] == ["Port of Long Beach, Long Beach, CA"]
+    assert len(seen) == 2
+
+
+@pytest.mark.parametrize(
+    ("query", "town"),
+    [
+        ("Dallas TX", "Dallas"),
+        ("Dallas, TX", "Dallas"),
+        ("Portland Oregon", "Portland"),
+        ("Ft Worth", "Fort Worth"),
+        ("chic", "Chicago"),
+        ("Winston Salem", "Winston-Salem"),
+    ],
+)
+def test_photon_keeps_towns_the_query_names(query, town):
+    seen: list[httpx.Request] = []
+    geocoder = PhotonGeocoder(
+        base_url="https://photon.test",
+        client=town_then_everything([feature(town, "Texas", -97.0, 32.0)], [], seen),
+    )
+
+    places = geocoder.search(query)
+
+    assert [p.label for p in places] == [f"{town}, TX"]
+    assert len(seen) == 1
+
+
 def test_photon_reverse_labels_the_town():
     geocoder = PhotonGeocoder(
         base_url="https://photon.test", client=client_returning(fixture("photon_reverse.json"))
@@ -129,6 +182,8 @@ def test_ors_parses_legs_geometry_and_waypoints():
     assert body["coordinates"][0] == [-87.6298, 41.8781]  # lng, lat
     assert body["units"] == "mi"
     assert body["radiuses"] == [-1, -1, -1]
+    # ORS only returns the per-leg "segments" when instructions are on (checked against the live API).
+    assert body["instructions"] is True
 
 
 @pytest.mark.parametrize(("status", "code"), [(404, 2010), (404, 2009), (400, 2004)])
