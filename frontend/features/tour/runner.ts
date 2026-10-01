@@ -157,7 +157,7 @@ export interface StepContext<App> {
   readonly reducedMotion: boolean;
   /** Pausable, abortable wait, scaled by the speed. */
   wait(ms: number): Promise<void>;
-  /** Call `frame` with an eased-free progress from 0 to 1 over `ms`; under reduced motion, jump to 1 and still take `ms`. */
+  /** Call `frame` with a linear progress from 0 to 1 over `ms` (pausable); under reduced motion, jump to 1 and still take `ms`. */
   animate(ms: number, frame: (progress: number) => void): Promise<void>;
   /** Resolves at once, or when the tour is resumed. Use it after waiting on anything that isn't a timer. */
   gate(): Promise<void>;

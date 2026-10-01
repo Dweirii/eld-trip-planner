@@ -27,6 +27,10 @@ features/
                         (brackets ↔ stops), miles.ts (daily miles), day tabs and print
   replay/               trip replay: timeline.ts (pure timeline, route and clock math), usePlayback
                         (rAF clock, speeds, reduced-motion steps), useTripReplay, PlaybackBar
+  tour/                 the guided tour (top bar "Take the tour", or /?tour=1): steps.ts (captions, what each
+                        step shows, timings), runner.ts (pure, pausable step runner), typing.ts, controller.ts
+                        (what Workspace lets the tour drive), useTour (URL, keyboard), TourOverlay (captions,
+                        controls, spotlight)
   workspace/            Workspace shell, ResultsPanel, usePlanner (all planner state), toast, overlay
 components/             TopBar, HowItWorks, StopIcon; components/ui/ holds shared primitives (Tabs)
 lib/
@@ -34,7 +38,7 @@ lib/
                         types.ts (friendly names over the generated schema.d.ts)
   format.ts             times, dates, hours and miles (times are read from the string, never converted)
   stops.ts              stop names, colours and shapes shared by the map, legend, itinerary and form
-e2e/                    Playwright smoke test
+e2e/                    Playwright smoke test and guided tour test
 scripts/                copy-maplibre-worker.mjs
 ```
 
@@ -45,7 +49,7 @@ scripts/                copy-maplibre-worker.mjs
 | `pnpm dev` | Copy the MapLibre worker, then start the dev server on :3000 |
 | `pnpm build` | Copy the MapLibre worker, then build for production |
 | `pnpm test` | Unit and component tests (Vitest); no network |
-| `pnpm test:e2e` | Build, start on :3100 and run the Playwright smoke test (API calls are stubbed in the browser) |
+| `pnpm test:e2e` | Build, start on :3100 and run the Playwright smoke and guided tour tests (API calls are stubbed in the browser) |
 | `pnpm typecheck` | Generate Next's route types, then `tsc --noEmit` |
 | `pnpm lint` | ESLint (`eslint .`) |
 | `pnpm gen:api` | Regenerate `lib/api/schema.d.ts` from `../backend/openapi.yaml` |
