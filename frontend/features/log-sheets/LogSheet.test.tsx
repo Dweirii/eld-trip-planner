@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { sampleTrip } from "@/lib/api/__fixtures__";
-import { dutyPath } from "./geometry";
+import { dutyPath, minuteToX, rowCenterY } from "./geometry";
 import { LogSheet } from "./LogSheet";
 
 const day1 = sampleTrip.daily_logs[0];
@@ -78,5 +78,36 @@ describe("LogSheet", () => {
     bracket.focus();
     await userEvent.keyboard("{Enter}");
     expect(onSelectStop).toHaveBeenCalledWith("s3");
+  });
+
+  describe("the replay's now line", () => {
+    it("crosses the grid at the playhead's minute, with the time on top and a dot on the current status", () => {
+      const { container } = render(<LogSheet log={day1} nowMinute={600} />);
+      const now = container.querySelector('[data-role="now-line"]')!;
+      expect(now).toHaveAttribute("aria-hidden", "true");
+      expect(now).toHaveClass("print:hidden");
+      const line = now.querySelector("line")!;
+      expect(line).toHaveAttribute("x1", String(minuteToX(600)));
+      expect(line).toHaveAttribute("x2", String(minuteToX(600)));
+      expect(line).toHaveAttribute("stroke", "#d6304b");
+      expect(texts(now)).toEqual(["10:00"]);
+      expect(now.querySelector("circle")).toHaveAttribute("cy", String(rowCenterY("driving")));
+    });
+
+    it("moves with the minute, down to fractions of one", () => {
+      const { container, rerender } = render(<LogSheet log={day1} nowMinute={1079.5} />);
+      expect(container.querySelector('[data-role="now-line"] line')).toHaveAttribute("x1", String(minuteToX(1079.5)));
+      expect(texts(container.querySelector('[data-role="now-line"]'))).toEqual(["17:59"]);
+      rerender(<LogSheet log={day1} nowMinute={1440} />);
+      expect(texts(container.querySelector('[data-role="now-line"]'))).toEqual(["24:00"]);
+    });
+
+    it("is not drawn without a playhead", () => {
+      const { container, rerender } = render(<LogSheet log={day1} nowMinute={600} />);
+      rerender(<LogSheet log={day1} nowMinute={null} />);
+      expect(container.querySelector('[data-role="now-line"]')).toBeNull();
+      rerender(<LogSheet log={day1} />);
+      expect(container.querySelector('[data-role="now-line"]')).toBeNull();
+    });
   });
 });

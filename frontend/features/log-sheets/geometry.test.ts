@@ -13,6 +13,7 @@ import {
   minuteToX,
   quarterTicks,
   rowCenterY,
+  statusAt,
 } from "./geometry";
 
 const [day1, day2] = sampleTrip.daily_logs;
@@ -65,5 +66,15 @@ describe("log grid geometry", () => {
       { start_minute: 720, end_minute: 765, place: "B" },
     ];
     expect(bracketLabels(crowded).map((label) => label.place)).toEqual(["A"]);
+  });
+
+  it("finds the duty status at a minute of the day (the last segment owns midnight)", () => {
+    const segments = sampleTrip.daily_logs[0].segments;
+    expect(statusAt(segments, 0)).toBe("off_duty");
+    expect(statusAt(segments, 359.5)).toBe("off_duty");
+    expect(statusAt(segments, 360)).toBe("driving");
+    expect(statusAt(segments, 705)).toBe("on_duty");
+    expect(statusAt(segments, 1440)).toBe("sleeper_berth");
+    expect(statusAt([], 600)).toBeNull();
   });
 });

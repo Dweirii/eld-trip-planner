@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import type { ReactNode } from "react";
+import { type ReactNode, memo } from "react";
 import type { DailyLog, DutyStatus } from "@/lib/api/types";
 import { logHours, miles, minuteLabel } from "@/lib/format";
 import { STATUS_NAMES } from "@/lib/stops";
@@ -19,11 +19,13 @@ import {
   quarterTicks,
   rowCenterY,
   rowTop,
+  statusAt,
 } from "./geometry";
 
-// SVG presentation attributes take literal colours (the --color-ink-blue / --color-teal tokens).
+// SVG presentation attributes take literal colours (the --color-ink-blue / --color-teal / --color-coral-ink tokens).
 const INK_BLUE = "#1f4fb5";
 const TEAL = "#008080";
+const CORAL_INK = "#d6304b";
 
 const ROW_LABELS: Record<DutyStatus, [string, string?]> = {
   off_duty: ["1. Off Duty"],
@@ -43,10 +45,24 @@ export interface LogSheetProps {
   bracketStopIds?: readonly (string | null)[];
   selectedStopId?: string | null;
   onSelectStop?: (stopId: string) => void;
+  /** Trip replay: the minute of this day to mark with a "now" line (null: none). */
+  nowMinute?: number | null;
 }
 
-/** One Driver's Daily Log, drawn like the FMCSA paper form and filled in "by hand". */
-export function LogSheet({ log, milesToday, bracketStopIds = [], selectedStopId = null, onSelectStop }: LogSheetProps) {
+const NO_STOP_IDS: readonly (string | null)[] = [];
+
+/**
+ * One Driver's Daily Log, drawn like the FMCSA paper form and filled in "by hand". Memoised: during a
+ * replay only the sheet under the playhead re-renders each frame, and then only its now line changes.
+ */
+export const LogSheet = memo(function LogSheet({
+  log,
+  milesToday,
+  bracketStopIds = NO_STOP_IDS,
+  selectedStopId = null,
+  onSelectStop,
+  nowMinute = null,
+}: LogSheetProps) {
   const header = log.header;
   const twoColumnRemarks = log.remarks.length > SINGLE_COLUMN_REMARKS;
   const [year, month, day] = log.date.split("-");
@@ -100,7 +116,13 @@ export function LogSheet({ log, milesToday, bracketStopIds = [], selectedStopId 
         </Field>
       </div>
 
-      <DutyGrid log={log} bracketStopIds={bracketStopIds} selectedStopId={selectedStopId} onSelectStop={onSelectStop} />
+      <DutyGrid
+        log={log}
+        bracketStopIds={bracketStopIds}
+        selectedStopId={selectedStopId}
+        onSelectStop={onSelectStop}
+        nowMinute={nowMinute}
+      />
 
       {/* In print the remarks run the full width (two columns when there are many), so a day fits one page. */}
       <section className="mt-1 grid grid-cols-[1.3fr_1fr] gap-5 print:gap-y-1">
@@ -144,14 +166,16 @@ export function LogSheet({ log, milesToday, bracketStopIds = [], selectedStopId 
       </footer>
     </article>
   );
-}
+});
 
 function DutyGrid({
   log,
   bracketStopIds,
   selectedStopId,
   onSelectStop,
-}: Required<Pick<LogSheetProps, "log" | "bracketStopIds">> & Pick<LogSheetProps, "selectedStopId" | "onSelectStop">) {
+  nowMinute,
+}: Required<Pick<LogSheetProps, "log" | "bracketStopIds">> &
+  Pick<LogSheetProps, "selectedStopId" | "onSelectStop" | "nowMinute">) {
   const total = ROWS.reduce((sum, status) => sum + log.totals[status], 0);
   return (
     <>
@@ -163,99 +187,7 @@ function DutyGrid({
         aria-label={`Duty status grid for ${log.date}`}
       >
         <title>{`Duty status grid for ${log.date}`}</title>
-        <g aria-hidden="true">
-          <g fontSize={8.5} fill="currentColor">
-            {HOUR_LABELS.map((label, hour) => {
-              const x = minuteToX(hour * 60);
-              if (hour === 0 || hour === 24) {
-                return (
-                  <text key={hour} x={x} y={8} textAnchor="middle">
-                    Mid-
-                    <tspan x={x} dy={8}>
-                      night
-                    </tspan>
-                  </text>
-                );
-              }
-              return (
-                <text key={hour} x={x} y={14} textAnchor="middle">
-                  {label}
-                </text>
-              );
-            })}
-            <text x={GRID.totalsX} y={8}>
-              Total
-              <tspan x={GRID.totalsX} dy={8}>
-                hours
-              </tspan>
-            </text>
-            {ROWS.map((status) => {
-              const [first, second] = ROW_LABELS[status];
-              return (
-                <text key={status} x={0} y={rowCenterY(status) + (second ? -1 : 3)}>
-                  {first}
-                  {second && (
-                    <tspan x={0} dy={9} fontSize={7.5}>
-                      {second}
-                    </tspan>
-                  )}
-                </text>
-              );
-            })}
-          </g>
-
-          <g stroke="currentColor" fill="none">
-            {ROWS.map((status) => (
-              <rect
-                key={status}
-                x={GRID.left}
-                y={rowTop(status)}
-                width={GRID.width}
-                height={GRID.rowHeight}
-                strokeWidth={1.1}
-              />
-            ))}
-            {hourLines().map((x) => (
-              <line key={x} x1={x} x2={x} y1={GRID.top} y2={GRID_BOTTOM} strokeWidth={0.8} />
-            ))}
-            {quarterTicks().map((tick) => (
-              <line
-                key={`${tick.x}-${tick.y1}`}
-                x1={tick.x}
-                x2={tick.x}
-                y1={tick.y1}
-                y2={tick.y2}
-                strokeWidth={0.7}
-              />
-            ))}
-          </g>
-
-          <path
-            data-role="duty-line"
-            d={dutyPath(log.segments)}
-            fill="none"
-            stroke={INK_BLUE}
-            strokeWidth={2.6}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-          {changePoints(log.segments).map((point, index) => (
-            <circle key={index} cx={point.x} cy={point.y} r={2.3} fill={INK_BLUE} />
-          ))}
-
-          <g data-role="totals" className="font-hand" fontSize={19} fontWeight={700} fill={INK_BLUE}>
-            {ROWS.map((status) => (
-              <text key={status} x={GRID.totalsX} y={rowCenterY(status) + 6}>
-                {logHours(log.totals[status])}
-              </text>
-            ))}
-            <text x={GRID.totalsX - 4} y={GRID_BOTTOM + 20}>{`=${logHours(total)}`}</text>
-          </g>
-
-          <text x={0} y={GRID_BOTTOM + 18} fontSize={8.5} fill="currentColor">
-            Remarks
-          </text>
-        </g>
+        <GridArt log={log} total={total} />
         {log.brackets.map((bracket, index) => {
           const stopId = bracketStopIds[index] ?? null;
           const selected = stopId !== null && stopId === selectedStopId;
@@ -277,6 +209,7 @@ function DutyGrid({
             </text>
           ))}
         </g>
+        {nowMinute !== null && nowMinute !== undefined && <NowLine log={log} minute={nowMinute} />}
       </svg>
       <p className="sr-only">
         {`Totals: ${ROWS.map((status) => `${STATUS_NAMES[status]} ${logHours(log.totals[status])} h`).join(", ")}; ${logHours(total)} h in all.`}
@@ -301,6 +234,139 @@ function DutyGrid({
         </tbody>
       </table>
     </>
+  );
+}
+
+/** Everything on the grid that only depends on the day: labels, rules, the duty line and totals (~350 nodes). */
+const GridArt = memo(function GridArt({ log, total }: { log: DailyLog; total: number }) {
+  return (
+    <g aria-hidden="true">
+      <g fontSize={8.5} fill="currentColor">
+        {HOUR_LABELS.map((label, hour) => {
+          const x = minuteToX(hour * 60);
+          if (hour === 0 || hour === 24) {
+            return (
+              <text key={hour} x={x} y={8} textAnchor="middle">
+                Mid-
+                <tspan x={x} dy={8}>
+                  night
+                </tspan>
+              </text>
+            );
+          }
+          return (
+            <text key={hour} x={x} y={14} textAnchor="middle">
+              {label}
+            </text>
+          );
+        })}
+        <text x={GRID.totalsX} y={8}>
+          Total
+          <tspan x={GRID.totalsX} dy={8}>
+            hours
+          </tspan>
+        </text>
+        {ROWS.map((status) => {
+          const [first, second] = ROW_LABELS[status];
+          return (
+            <text key={status} x={0} y={rowCenterY(status) + (second ? -1 : 3)}>
+              {first}
+              {second && (
+                <tspan x={0} dy={9} fontSize={7.5}>
+                  {second}
+                </tspan>
+              )}
+            </text>
+          );
+        })}
+      </g>
+
+      <g stroke="currentColor" fill="none">
+        {ROWS.map((status) => (
+          <rect
+            key={status}
+            x={GRID.left}
+            y={rowTop(status)}
+            width={GRID.width}
+            height={GRID.rowHeight}
+            strokeWidth={1.1}
+          />
+        ))}
+        {hourLines().map((x) => (
+          <line key={x} x1={x} x2={x} y1={GRID.top} y2={GRID_BOTTOM} strokeWidth={0.8} />
+        ))}
+        {quarterTicks().map((tick) => (
+          <line key={`${tick.x}-${tick.y1}`} x1={tick.x} x2={tick.x} y1={tick.y1} y2={tick.y2} strokeWidth={0.7} />
+        ))}
+      </g>
+
+      <path
+        data-role="duty-line"
+        d={dutyPath(log.segments)}
+        fill="none"
+        stroke={INK_BLUE}
+        strokeWidth={2.6}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      {changePoints(log.segments).map((point, index) => (
+        <circle key={index} cx={point.x} cy={point.y} r={2.3} fill={INK_BLUE} />
+      ))}
+
+      <g data-role="totals" className="font-hand" fontSize={19} fontWeight={700} fill={INK_BLUE}>
+        {ROWS.map((status) => (
+          <text key={status} x={GRID.totalsX} y={rowCenterY(status) + 6}>
+            {logHours(log.totals[status])}
+          </text>
+        ))}
+        <text x={GRID.totalsX - 4} y={GRID_BOTTOM + 20}>{`=${logHours(total)}`}</text>
+      </g>
+
+      <text x={0} y={GRID_BOTTOM + 18} fontSize={8.5} fill="currentColor">
+        Remarks
+      </text>
+    </g>
+  );
+});
+
+const NOW_LABEL = { width: 34, height: 13 } as const;
+
+/**
+ * Trip replay: a coral playhead across the grid with the time on a tab at the top, and a dot where the
+ * pen is. Decorative (the playback bar announces the time) and never printed.
+ */
+function NowLine({ log, minute }: { log: DailyLog; minute: number }) {
+  const x = minuteToX(minute);
+  const status = statusAt(log.segments, minute);
+  return (
+    <g data-role="now-line" aria-hidden="true" className="print:hidden" pointerEvents="none">
+      <line
+        x1={x}
+        x2={x}
+        y1={NOW_LABEL.height}
+        y2={GRID_BOTTOM + 3}
+        stroke={CORAL_INK}
+        strokeWidth={2}
+        vectorEffect="non-scaling-stroke"
+      />
+      {status && (
+        <circle
+          cx={x}
+          cy={rowCenterY(status)}
+          r={3.8}
+          fill={CORAL_INK}
+          stroke="#fff"
+          strokeWidth={1.5}
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
+      <g transform={`translate(${x} 0)`}>
+        <rect x={-NOW_LABEL.width / 2} y={0} width={NOW_LABEL.width} height={NOW_LABEL.height} rx={3} fill={CORAL_INK} />
+        <text y={9.4} textAnchor="middle" fontSize={8.5} fontWeight={600} fill="#fff">
+          {minuteLabel(Math.floor(minute))}
+        </text>
+      </g>
+    </g>
   );
 }
 
