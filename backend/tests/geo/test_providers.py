@@ -237,6 +237,20 @@ def test_ors_segments_without_steps_give_legs_without_steps():
     assert [leg.miles for leg in route.legs] == [297.1, 635.3]
 
 
+@pytest.mark.parametrize(
+    "steps",
+    [None, ["Turn left"], [{"distance": "x", "duration": 1.0, "instruction": "Turn left"}]],
+    ids=["steps-null", "step-is-a-string", "distance-not-a-number"],
+)
+def test_ors_malformed_steps_raise_upstream_unavailable(steps):
+    payload = fixture("ors_route.json")
+    for segment in payload["features"][0]["properties"]["segments"]:
+        segment["steps"] = steps
+
+    with pytest.raises(UpstreamUnavailable, match="unexpected response"):
+        ors_route_with(payload)
+
+
 @pytest.mark.parametrize(("status", "code"), [(404, 2010), (404, 2009), (400, 2004)])
 def test_ors_unroutable_trips_raise_route_not_found(status, code):
     router = OrsRouter(
