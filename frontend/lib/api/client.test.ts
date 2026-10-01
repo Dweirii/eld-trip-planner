@@ -91,6 +91,17 @@ describe("api client", () => {
     await expect(api.searchPlaces("chi")).rejects.toMatchObject({ name: "AbortError" });
   });
 
+  it("lets an abort while reading the body reject with the AbortError itself", async () => {
+    const aborted = { ok: true, status: 200, json: () => Promise.reject(new DOMException("Aborted", "AbortError")) };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(aborted));
+    await expect(api.searchPlaces("chi")).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("still reports a server error when the error body isn't JSON", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("<html>Bad gateway</html>", { status: 502 })));
+    await expect(api.health()).rejects.toMatchObject({ status: 502, code: "server_error" });
+  });
+
   it("encodes search queries", async () => {
     const fetchMock = respond(200, []);
     vi.stubGlobal("fetch", fetchMock);

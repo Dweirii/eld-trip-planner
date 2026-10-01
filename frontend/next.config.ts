@@ -1,7 +1,13 @@
 import path from "node:path";
 import type { NextConfig } from "next";
 
-const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:8000";
+// Read at build time (the /api rewrite below) and at run time (lib/api/server.ts renders /trips/[id]).
+if (process.env.VERCEL && !process.env.API_BASE_URL) {
+  throw new Error(
+    "API_BASE_URL is not set. On Vercel it must point at the deployed Django API, or /api/* would proxy to localhost.",
+  );
+}
+const API_BASE_URL = (process.env.API_BASE_URL ?? "http://localhost:8000").replace(/\/+$/, "");
 
 const nextConfig: NextConfig = {
   // Django's routes end with "/". Never redirect on trailing slashes: a redirect drops POST bodies.

@@ -59,7 +59,14 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError(0, "network_error", "Can't reach the server. Check your connection and try again.");
   }
 
-  const body = (await response.json().catch(() => null)) as { error?: ApiErrorBody } | T | null;
+  let body: { error?: ApiErrorBody } | T | null;
+  try {
+    body = (await response.json()) as { error?: ApiErrorBody } | T;
+  } catch (error) {
+    // An abort can land while the body is still streaming: let the caller see it as an abort.
+    if (error instanceof DOMException && error.name === "AbortError") throw error;
+    body = null; // Not JSON (e.g. a proxy's HTML error page).
+  }
   if (!response.ok) {
     const error = (body as { error?: ApiErrorBody } | null)?.error;
     throw new ApiError(
