@@ -43,6 +43,12 @@ export function miles(value: number): string {
   return Math.round(value).toLocaleString("en-US");
 }
 
+/** A turn-by-turn distance: 0.42 → "0.4" and 9.94 → "9.9" under 10 miles, whole miles from there. */
+export function stepMiles(value: number): string {
+  const tenths = Math.round(value * 10) / 10;
+  return tenths < 10 ? tenths.toFixed(1) : miles(tenths);
+}
+
 /** Whole minutes between two ISO timestamps. */
 export function minutesBetween(startIso: string, endIso: string): number {
   return Math.round((Date.parse(endIso) - Date.parse(startIso)) / 60_000);

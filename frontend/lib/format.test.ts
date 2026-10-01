@@ -9,6 +9,7 @@ import {
   minuteLabel,
   minutesBetween,
   shortDate,
+  stepMiles,
 } from "./format";
 
 afterEach(() => vi.unstubAllEnvs());
@@ -37,6 +38,15 @@ describe("format", () => {
     expect(logHours(6.0)).toBe("6");
     expect(miles(2934.7)).toBe("2,935");
     expect(miles(972.1)).toBe("972");
+  });
+
+  it("keeps a decimal on step distances under 10 miles", () => {
+    expect(stepMiles(0.1)).toBe("0.1");
+    expect(stepMiles(0.42)).toBe("0.4");
+    expect(stepMiles(9.94)).toBe("9.9");
+    expect(stepMiles(9.96)).toBe("10");
+    expect(stepMiles(31.5)).toBe("32");
+    expect(stepMiles(1234.4)).toBe("1,234");
   });
 
   it("measures minutes between timestamps and labels minutes of the day", () => {
