@@ -7,6 +7,9 @@
 //
 // ELEVENLABS_API_KEY comes from the environment, or from .env.tts at the repository root (git-ignored).
 // ELEVENLABS_VOICE is a voice name or id (default: Brian). The key is never printed.
+//
+// A key limited to text-to-speech is enough: a voice id is used as given, and when the key may not list
+// the account's voices, a name is looked up in the small table of premade voices below.
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -17,6 +20,16 @@ const OUTPUT_FORMAT = "mp3_44100_128";
 const MODEL = "eleven_multilingual_v2";
 const VOICE_SETTINGS = { stability: 0.5, similarity_boost: 0.75 };
 const DEFAULT_VOICE = "Brian";
+/** ElevenLabs' premade voices by name, for a key that may not list the account's voices. */
+const PREMADE_VOICES = {
+  Brian: "nPczCjzI2devNBz1zQrb",
+  George: "JBFqnCBsd6RMkjVDRZzb",
+  Sarah: "EXAVITQu4vr4xnSDxMaL",
+  Rachel: "21m00Tcm4TlvDq8ikWAM",
+  Adam: "pNInz6obpgDQGcFmaJgB",
+};
+/** What a voice id looks like: about twenty letters and digits, nothing else. */
+const VOICE_ID = /^[A-Za-z0-9]{18,24}$/;
 /** A 429 or a 5xx is tried once more, after this long. */
 const RETRY_AFTER_MS = 2000;
 
@@ -37,6 +50,7 @@ const DEFAULT_PATHS = {
  * @property {{ lines: string, out: string, envFile: string }} paths
  *
  * @typedef {{ voice_id: string, name?: string, category?: string }} Voice
+ * @typedef {Voice & { how: string }} ResolvedVoice
  * @typedef {{ hash: string, voice: string, bytes: number }} Clip
  */
 
@@ -76,30 +90,64 @@ async function request(url, init, { fetch, log, wait }) {
   }
   if (!response.ok) {
     const detail = (await response.text().catch(() => "")).slice(0, 300);
-    throw new Error(`ElevenLabs answered ${response.status} for ${new URL(url).pathname}${detail && `: ${detail}`}`);
+    const message = `ElevenLabs answered ${response.status} for ${new URL(url).pathname}${detail && `: ${detail}`}`;
+    throw Object.assign(new Error(message), { status: response.status });
   }
   return response;
 }
 
 /**
- * The voice to speak with: `wanted` as an id, then as a name (any case; "Brian" also finds
+ * `wanted` among the account's voices: as an id, then as a name (any case; "Brian" also finds
  * "Brian - Deep, Resonant and Comforting"), else the account's first premade voice.
  * @param {string} wanted
  * @param {Voice[]} voices
  * @param {Options["log"]} log
+ * @returns {ResolvedVoice}
  */
-function resolveVoice(wanted, voices, log) {
+function pickVoice(wanted, voices, log) {
   const name = wanted.toLowerCase();
   const named = (/** @type {Voice} */ voice) => (voice.name ?? "").toLowerCase();
   const match =
     voices.find((voice) => voice.voice_id === wanted) ??
     voices.find((voice) => named(voice) === name) ??
     voices.find((voice) => named(voice).split(" - ")[0].trim() === name);
-  if (match) return match;
+  if (match) return { ...match, how: "found among the account's voices" };
   const premade = voices.find((voice) => voice.category === "premade");
   if (!premade) throw new Error(`No voice matches "${wanted}", and the account has no premade voice to fall back to.`);
   log(`No voice matches "${wanted}": using the first premade voice, ${premade.name} (${premade.voice_id}).`);
-  return premade;
+  return { ...premade, how: "the account's first premade voice" };
+}
+
+/**
+ * The voice to speak with. A voice id is used as given, with no call. A name is looked up among the
+ * account's voices; if the key may not list them (a key limited to text-to-speech answers 401 or 403),
+ * in the built-in table of premade voices instead.
+ * @param {string} wanted
+ * @param {string} key
+ * @param {Pick<Options, "fetch" | "log" | "wait">} io
+ * @returns {Promise<ResolvedVoice>}
+ */
+async function resolveVoice(wanted, key, io) {
+  if (VOICE_ID.test(wanted)) return { voice_id: wanted, how: "the voice id as given" };
+  let listed;
+  try {
+    listed = await (await request(`${API}/voices`, { headers: { "xi-api-key": key } }, io)).json();
+  } catch (error) {
+    const status = error instanceof Error && "status" in error ? error.status : undefined;
+    if (status !== 401 && status !== 403) throw error;
+    const name = Object.keys(PREMADE_VOICES).find((premade) => premade.toLowerCase() === wanted.toLowerCase());
+    if (!name) {
+      throw new Error(
+        `This key may not list voices (ElevenLabs answered ${status}), and "${wanted}" is not one of the built-in names (${Object.keys(PREMADE_VOICES).join(", ")}). Set ELEVENLABS_VOICE to a voice id, or grant the key the "Voices: Read" permission.`,
+      );
+    }
+    return {
+      voice_id: PREMADE_VOICES[/** @type {keyof typeof PREMADE_VOICES} */ (name)],
+      name,
+      how: `from the built-in table: this key may not list voices (${status})`,
+    };
+  }
+  return pickVoice(wanted, listed.voices ?? [], io.log);
 }
 
 /** @param {string} file */
@@ -125,9 +173,8 @@ async function generate({ key, wanted, force }, { fetch, log, wait, paths }) {
   if (unsafe) throw new Error(`"${unsafe}" can't name a clip: step ids are lower-case letters, digits and dashes.`);
 
   const io = { fetch, log, wait };
-  const listed = await (await request(`${API}/voices`, { headers: { "xi-api-key": key } }, io)).json();
-  const voice = resolveVoice(wanted, listed.voices ?? [], log);
-  log(`Voice: ${voice.name} (${voice.voice_id})`);
+  const voice = await resolveVoice(wanted, key, io);
+  log(`Voice: ${voice.name ? `${voice.name} (${voice.voice_id})` : voice.voice_id}, ${voice.how}`);
 
   mkdirSync(paths.out, { recursive: true });
   const manifestFile = join(paths.out, "manifest.json");

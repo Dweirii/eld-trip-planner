@@ -29,6 +29,8 @@ let output: string[];
 /** What the next text-to-speech calls answer with (0: the clip), before they all answer with the clip. */
 let failures: number[];
 let voices: typeof VOICES;
+/** What listing the voices answers with (0: the voices). A key limited to text-to-speech gets a 401. */
+let listing: number;
 
 const speech = () => calls.filter((call) => call.method === "POST");
 const clip = (text: string) => `mp3:${text}`;
@@ -42,7 +44,11 @@ const fakeFetch: typeof fetch = async (input, init) => {
   const body = typeof init?.body === "string" ? JSON.parse(init.body) : null;
   calls.push({ method: init?.method ?? "GET", url, key: headers.get("xi-api-key"), body });
   if (headers.get("xi-api-key") !== KEY) return Response.json({ detail: { status: "invalid_api_key" } }, { status: 401 });
-  if (url === "https://api.elevenlabs.io/v1/voices") return Response.json({ voices });
+  if (url === "https://api.elevenlabs.io/v1/voices") {
+    if (!listing) return Response.json({ voices });
+    const detail = { status: "missing_permissions", message: "The API key you used is missing the permission voices_read" };
+    return Response.json({ detail }, { status: listing });
+  }
   const failure = failures.shift();
   if (failure) return Response.json({ detail: { status: "busy" } }, { status: failure });
   return new Response(clip(body.text), { headers: { "Content-Type": "audio/mpeg" } });
@@ -67,6 +73,7 @@ beforeEach(() => {
   output = [];
   failures = [];
   voices = VOICES;
+  listing = 0;
 });
 
 afterEach(() => rmSync(root, { recursive: true, force: true }));
@@ -102,6 +109,53 @@ describe("generate-tour-voice", () => {
     voices = [{ ...BRIAN, name: "Brian - Deep, Resonant and Comforting" }];
     await run(["--force"]);
     expect(speech()[0].url).toContain("/text-to-speech/brian-id?");
+  });
+
+  it("uses a voice id as given, without listing the voices", async () => {
+    listing = 401;
+    expect(await run([], { ELEVENLABS_API_KEY: KEY, ELEVENLABS_VOICE: "nPczCjzI2devNBz1zQrb" })).toBe(0);
+    expect(calls.map((call) => call.method)).toEqual(["POST", "POST"]);
+    expect(speech()[0].url).toBe(
+      "https://api.elevenlabs.io/v1/text-to-speech/nPczCjzI2devNBz1zQrb?output_format=mp3_44100_128",
+    );
+    expect(manifest().intro.voice).toBe("nPczCjzI2devNBz1zQrb");
+    expect(output.join("\n")).toMatch(/Voice: nPczCjzI2devNBz1zQrb.*as given/);
+  });
+
+  it("falls back to its own table of premade voices when the key may not list them (401 or 403)", async () => {
+    listing = 401;
+    expect(await run()).toBe(0);
+    expect(calls[0]).toMatchObject({ method: "GET", url: "https://api.elevenlabs.io/v1/voices" });
+    expect(speech()).toHaveLength(2);
+    expect(speech()[0].url).toContain("/text-to-speech/nPczCjzI2devNBz1zQrb?");
+    expect(output.join("\n")).toMatch(/Voice: Brian \(nPczCjzI2devNBz1zQrb\).*built-in/);
+
+    const ids = { george: "JBFqnCBsd6RMkjVDRZzb", SARAH: "EXAVITQu4vr4xnSDxMaL", Rachel: "21m00Tcm4TlvDq8ikWAM", adam: "pNInz6obpgDQGcFmaJgB" };
+    listing = 403;
+    for (const [name, id] of Object.entries(ids)) {
+      calls = [];
+      expect(await run(["--force"], { ELEVENLABS_API_KEY: KEY, ELEVENLABS_VOICE: name })).toBe(0);
+      expect(speech()[0].url).toContain(`/text-to-speech/${id}?`);
+    }
+  });
+
+  it("stops with a clear message when the key may not list voices and the name is not in its table", async () => {
+    listing = 401;
+    expect(await run([], { ELEVENLABS_API_KEY: KEY, ELEVENLABS_VOICE: "Nobody" })).toBe(1);
+    expect(speech()).toEqual([]);
+    expect(existsSync(paths.out)).toBe(false);
+    const said = output.join("\n");
+    expect(said).toMatch(/"Nobody"/);
+    expect(said).toMatch(/voice id/);
+    expect(said).toMatch(/Voices: Read/);
+    expect(said).not.toContain(KEY);
+  });
+
+  it("still fails on any other error from listing the voices", async () => {
+    listing = 500;
+    expect(await run()).toBe(1);
+    expect(speech()).toEqual([]);
+    expect(output.join("\n")).toMatch(/500/);
   });
 
   it("falls back to the first premade voice, and says which, when nothing matches", async () => {

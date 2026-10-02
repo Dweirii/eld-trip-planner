@@ -80,7 +80,10 @@ pnpm gen:voice --force    # make them all again
 ```
 
 - `ELEVENLABS_API_KEY` is read from the environment, or from an `ELEVENLABS_API_KEY=` line in `.env.tts` at the repository root (git-ignored). The script never prints it, and exits with code 1 when it is missing.
-- `ELEVENLABS_VOICE` is a voice name or id (default: `Brian`). If nothing matches, the script falls back to the account's first premade voice and says which one it used.
+- `ELEVENLABS_VOICE` is a voice name or id (default: `Brian`). The script prints the voice id it used and how it found it.
+  - A voice id is used as given.
+  - A name is looked up among the account's voices. If nothing matches, the script falls back to the account's first premade voice.
+  - A key limited to text-to-speech can't list voices. The script then knows `Brian`, `George`, `Sarah`, `Rachel` and `Adam` itself; for any other voice, pass its id or grant the key "Voices: Read".
 - Clips are made one at a time; a 429 or 5xx answer is retried once. `manifest.json` records each clip's text hash, voice and size, which is how unchanged clips are skipped.
 
 Commit the regenerated `public/tour/voice/` files with the change to the lines.
