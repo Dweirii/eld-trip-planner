@@ -2,8 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EMPTY_FORM } from "@/features/trip-form/model";
 import { sampleTrip } from "@/lib/api/__fixtures__";
 import { type TourActions, type TourAppState, createTourStore } from "./controller";
-import { type Scheduler, createTourRunner } from "./runner";
+import { AFTER_CLIP, type Scheduler, type TourVoice, createTourRunner } from "./runner";
 import { PLANNING_CAPTION, RETRY_CAPTION, TIMING, TOUR_STEPS, TOUR_TRIP } from "./steps";
+import { PLANNING_VOICE } from "./voice";
 
 const scheduler: Scheduler = {
   now: () => Date.now(),
@@ -60,12 +61,34 @@ function workspace(outcomes: ("ok" | "down")[] = ["ok"], initial: Partial<TourAp
   return { app: store.controller, plans, state: () => state };
 }
 
-function run(ids: string[], app: ReturnType<typeof workspace>["app"]) {
+function run(ids: string[], app: ReturnType<typeof workspace>["app"], narrator?: TourVoice) {
   const onEnd = vi.fn();
   const steps = TOUR_STEPS.filter((step) => ids.includes(step.id));
-  const runner = createTourRunner({ steps, app, scheduler, onEnd });
+  const runner = createTourRunner({ steps, app, scheduler, narrator, onEnd });
   runner.start();
   return { runner, onEnd };
+}
+
+/** A voice whose clips last what the test says, in fake-timer time. */
+function fakeVoice(clips: Record<string, number>) {
+  const played: string[] = [];
+  let cut = () => undefined as void;
+  const voice: TourVoice = {
+    play: (id) =>
+      new Promise((resolve) => {
+        played.push(id);
+        const timer = setTimeout(() => resolve(true), clips[id]);
+        cut = () => {
+          clearTimeout(timer);
+          resolve(false);
+        };
+      }),
+    pause: () => undefined,
+    resume: () => undefined,
+    stop: () => cut(),
+    preload: () => undefined,
+  };
+  return { voice, played };
 }
 
 const advance = (ms: number) => vi.advanceTimersByTimeAsync(ms);
@@ -145,6 +168,43 @@ describe("the guided tour's steps", () => {
     expect(runner.caption()).toBe("972 miles and 2 log days, on a real heavy-truck route.");
   });
 
+  it("speaks the planning line when the plan is still on its way after \"Plan the trip.\", and waits for it", async () => {
+    const { app } = workspace(["ok"], { values: TOUR_TRIP });
+    const { voice, played } = fakeVoice({ plan: 1000, [PLANNING_VOICE]: 6000, results: 1000 });
+    const { runner } = run(["plan", "results"], app, voice);
+    expect(TOUR_STEPS.find((step) => step.id === "plan")?.clips).toEqual([PLANNING_VOICE]);
+    await advance(PRESS - 1);
+    expect(played).toEqual(["plan"]);
+    await advance(1);
+    expect(played).toEqual(["plan", PLANNING_VOICE]);
+    // The plan is in, but the line is still being spoken.
+    await advance(API_MS);
+    expect(app.state.results).toBe(true);
+    expect(runner.getSnapshot().index).toBe(0);
+    await advance(6000 - API_MS + AFTER_CLIP);
+    expect(runner.getSnapshot().index).toBe(1);
+    expect(played).toEqual(["plan", PLANNING_VOICE, "results"]);
+  });
+
+  it("skips the planning line when the plan is in before \"Plan the trip.\" has been said", async () => {
+    const { app } = workspace(["ok"], { values: TOUR_TRIP });
+    const { voice, played } = fakeVoice({ plan: PRESS + API_MS + 500, results: 1000 });
+    const { runner } = run(["plan", "results"], app, voice);
+    await advance(PRESS + API_MS + 500 + AFTER_CLIP - 1);
+    expect(runner.getSnapshot().index).toBe(0);
+    await advance(1);
+    expect(runner.getSnapshot().index).toBe(1);
+    expect(played).toEqual(["plan", "results"]);
+  });
+
+  it("speaks the planning line once, not again for the retry", async () => {
+    const { app } = workspace(["down", "ok"], { values: TOUR_TRIP });
+    const { voice, played } = fakeVoice({ plan: 1000, [PLANNING_VOICE]: 2000, results: 1000 });
+    run(["plan", "results"], app, voice);
+    await advance(PRESS + API_MS + TIMING.retryAfter + API_MS + AFTER_CLIP);
+    expect(played).toEqual(["plan", PLANNING_VOICE, "results"]);
+  });
+
   it("says the API is waking up and retries once after an error", async () => {
     const { app, plans } = workspace(["down", "ok"], { values: TOUR_TRIP });
     const { runner } = run(["plan", "results"], app);
@@ -176,6 +236,14 @@ describe("the guided tour's steps", () => {
     expect(runner.caption()).toBe(PLANNING_CAPTION);
     await advance(API_MS);
     expect(runner.caption()).toMatch(/^972 miles/);
+  });
+
+  it("keeps the planning line to the plan step: a results step that plans for itself speaks only its own", async () => {
+    const { app } = workspace(["ok"]);
+    const { voice, played } = fakeVoice({ results: 1000, [PLANNING_VOICE]: 1000 });
+    run(["results"], app, voice);
+    await advance(API_MS + TIMING.results);
+    expect(played).toEqual(["results"]);
   });
 
   it("ends on the trip's shareable link", async () => {
