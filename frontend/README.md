@@ -31,7 +31,8 @@ features/
                         step shows, timings), runner.ts (pure, pausable step runner), typing.ts, controller.ts
                         (what Workspace lets the tour drive), useTour (URL, keyboard), TourOverlay (captions,
                         controls, spotlight); voice.ts and voice-lines.json (what is spoken at each step),
-                        narrator.ts (plays the clips in public/tour/voice/)
+                        narrator.ts (plays the clips in public/tour/voice/); invite.ts and TourInvite (the top
+                        bar's tour pill, and the first-visit invitation to press it)
   workspace/            Workspace shell, ResultsPanel, usePlanner (all planner state), toast, overlay
 components/             TopBar, HowItWorks, StopIcon; components/ui/ holds shared primitives (Tabs)
 lib/

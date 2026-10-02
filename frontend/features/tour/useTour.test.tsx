@@ -1,6 +1,7 @@
 import { act, fireEvent, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TourController } from "./controller";
+import { SEEN_KEY, createInviteStore, invitation } from "./invite";
 import type { Narrator } from "./narrator";
 import type { Scheduler, TourStep } from "./runner";
 import { TOUR_UI_ATTRIBUTE, tourSpeed, useTour } from "./useTour";
@@ -77,12 +78,15 @@ function fakeNarrator() {
 }
 
 let narrator = fakeNarrator();
+let invite = createInviteStore();
 
 function setup(url = "/?tour=1") {
   open(url);
   narrator = fakeNarrator();
+  invite = createInviteStore();
   const voice = narrator;
-  return renderHook(() => useTour(controller, { steps, scheduler, narrator: voice }));
+  const store = invite;
+  return renderHook(() => useTour(controller, { steps, scheduler, narrator: voice, invite: store }));
 }
 
 const key = (target: Element, name: string) => act(() => void fireEvent.keyDown(target, { key: name }));
@@ -116,6 +120,20 @@ describe("useTour", () => {
     const { result } = setup("/trips/abc123?tour=1");
     expect(navigation.replace).toHaveBeenCalledWith("/?tour=1");
     expect(result.current.active).toBe(false);
+  });
+
+  it("tells the invitation when a tour starts, so it stops inviting, now and on later visits", () => {
+    const idle = setup("/");
+    expect(invitation(invite.getSnapshot(), "/")).toEqual({ live: true, bubble: true });
+    expect(window.localStorage.getItem(SEEN_KEY)).toBeNull();
+    idle.unmount();
+
+    setup("/?tour=1");
+    expect(invitation(invite.getSnapshot(), "/").live).toBe(false);
+    expect(window.localStorage.getItem(SEEN_KEY)).not.toBeNull();
+    key(document.body, "Escape");
+    expect(invitation(invite.getSnapshot(), "/").live).toBe(false);
+    expect(invitation(createInviteStore().getSnapshot(), "/").live).toBe(false);
   });
 
   it("moves on by itself, step by step", async () => {

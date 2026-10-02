@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import type { TourController } from "./controller";
+import { type TourInviteStore, tourInvite } from "./invite";
 import { type Narrator, createNarrator } from "./narrator";
 import {
   IDLE_SNAPSHOT,
@@ -158,6 +159,7 @@ export interface UseTourOptions {
   steps?: readonly TourStep<TourController>[];
   scheduler?: Scheduler;
   narrator?: Narrator;
+  invite?: TourInviteStore;
 }
 
 export interface Tour {
@@ -191,7 +193,7 @@ export interface Tour {
  */
 export function useTour(
   controller: TourController | null,
-  { steps = TOUR_STEPS, scheduler, narrator: givenNarrator }: UseTourOptions = {},
+  { steps = TOUR_STEPS, scheduler, narrator: givenNarrator, invite = tourInvite }: UseTourOptions = {},
 ): Tour {
   const params = useSearchParams();
   const pathname = usePathname();
@@ -230,6 +232,13 @@ export function useTour(
 
   const active = snapshot.status === "running" || snapshot.status === "paused";
   const running = snapshot.status === "running";
+
+  // A tour that has started has been seen: the top bar stops inviting people to it.
+  useEffect(() => {
+    if (!active) return;
+    invite.tourStarted();
+    return () => invite.tourEnded();
+  }, [active, invite]);
 
   useEffect(() => {
     if (!active) return;

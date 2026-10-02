@@ -34,7 +34,7 @@ export function createMarkerElement(kind: StopKind, label: string): HTMLDivEleme
 }
 
 /** A side-on truck facing right, drawn white on the marker's deep teal (24 × 24 grid). */
-const TRUCK_PATHS: { d: string; fill: string; stroke?: string }[] = [
+export const TRUCK_PATHS: { d: string; fill: string; stroke?: string }[] = [
   // Trailer, then cab.
   { d: "M3 5.5h10a1 1 0 0 1 1 1V16H2V6.5a1 1 0 0 1 1-1z", fill: "#fff" },
   { d: "M15 8.5h3.55a1 1 0 0 1 .82.43l2.45 3.5a1 1 0 0 1 .18.57V16H15z", fill: "#fff" },
