@@ -1,0 +1,19 @@
+{
+  "intro": "Milepost plans a truck trip under F M C S A Hours of Service rules, and fills in the driver's daily logs.",
+  "current": "The brief's four inputs. First, where the truck is now.",
+  "stops": "Then the pickup, and the dropoff.",
+  "cycle": "And the hours already used in the seventy hour, eight day cycle.",
+  "plan": "Plan the trip.",
+  "planning": "It's routing a heavy truck, then simulating every hour under the Hours of Service rules.",
+  "results": "Here is the result: the distance, and the number of log days, on a real heavy truck route.",
+  "itinerary": "Every stop the rules require. Thirty minute breaks. Ten hour rests. Fuel at least every thousand miles. And one hour at pickup and dropoff.",
+  "linked": "Select a stop, and it's linked everywhere: the map, the itinerary, and its bracket on the daily log.",
+  "directions": "Turn by turn route instructions, for every leg.",
+  "rules": "An independent checker re-verifies every rule, each with its regulation citation.",
+  "assumptions": "These are the assumptions the plan was built on.",
+  "logs": "One daily log per day, drawn like the F M C S A paper form. The duty line. Totals that add up to twenty four. Remarks. And the seventy hour recap.",
+  "next-day": "Day two picks up where day one left off.",
+  "print": "Ready to print, or save as P D F. One landscape page per day.",
+  "replay": "Press play. The truck, the itinerary, and the log line move together.",
+  "share": "Every trip gets a shareable link. Thanks for watching."
+}

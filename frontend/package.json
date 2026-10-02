@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "gen:api": "openapi-typescript ../backend/openapi.yaml -o lib/api/schema.d.ts"
+    "gen:api": "openapi-typescript ../backend/openapi.yaml -o lib/api/schema.d.ts",
+    "gen:voice": "node scripts/generate-tour-voice.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

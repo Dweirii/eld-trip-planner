@@ -144,3 +144,4 @@ CI runs all three on every push and pull request.
 - Routing and directions by openrouteservice.org.
 - Geocoding by Photon (komoot).
 - Towns and time zones from GeoNames (CC BY 4.0).
+- Tour narration: ElevenLabs.
