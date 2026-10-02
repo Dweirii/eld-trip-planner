@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import type { Ref } from "react";
+import { TOUR_HREF } from "@/features/tour/invite";
 import { CycleGauge } from "./CycleGauge";
 import { DetailsSection } from "./DetailsSection";
 import { ExampleChips } from "./ExampleChips";
@@ -91,6 +93,19 @@ export function TripForm({ values, errors, pending, onChange, onSubmit, onExampl
         )}
       </button>
       <ExampleChips onPick={onExample} disabled={pending} />
+      {/* A second, quiet way into the guided tour, for someone looking at an empty form. */}
+      <Link
+        href={TOUR_HREF}
+        className="-mt-1 flex w-fit items-center gap-1.5 text-[12px] font-semibold text-teal hover:underline"
+      >
+        <svg viewBox="0 0 10 10" width="8" height="8" aria-hidden="true" focusable="false">
+          <path
+            d="M2.5 1.4v7.2a.5.5 0 0 0 .76.43l5.6-3.6a.5.5 0 0 0 0-.86l-5.6-3.6a.5.5 0 0 0-.76.43z"
+            fill="currentColor"
+          />
+        </svg>
+        Not sure where to start? Take the tour
+      </Link>
     </form>
   );
 }
