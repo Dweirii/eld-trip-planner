@@ -160,10 +160,9 @@ async function planTrip(ctx: TourContext, voiced = false) {
   ctx.exit();
 }
 
-/** The tour's trip on screen: planned already, still planning (wait for it), or planned now. */
-async function ensurePlanned(ctx: TourContext) {
+/** The plan under way (Next was pressed before it came in), or a new one for the tour's trip. */
+async function waitForPlan(ctx: TourContext) {
   const { app } = ctx;
-  if (isPlanned(app.state)) return;
   if (app.state.pending) {
     ctx.say(PLANNING_CAPTION);
     ctx.spotlight(null);
@@ -174,6 +173,18 @@ async function ensurePlanned(ctx: TourContext) {
   }
   app.setValues({ ...TOUR_TRIP });
   await planTrip(ctx);
+}
+
+/**
+ * The tour's trip on screen: planned already, still planning (wait for it), or planned now. While it
+ * waits, the caption says so, and the step's own line (about results that aren't in yet) is held back
+ * until they are.
+ */
+async function ensurePlanned(ctx: TourContext) {
+  if (isPlanned(ctx.app.state)) return;
+  ctx.hush();
+  await waitForPlan(ctx);
+  ctx.narrate();
 }
 
 /** The results as a step starts them: this tab, nothing selected, no replay, the map at the top. */

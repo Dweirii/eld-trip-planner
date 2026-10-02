@@ -1,11 +1,24 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createNarrator } from "./narrator";
+import type { Scheduler } from "./runner";
+
+/** Fake-timer time. */
+const scheduler: Scheduler = {
+  now: () => Date.now(),
+  setTimeout: (callback, ms) => setTimeout(callback, ms),
+  clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+  requestFrame: (callback) => setTimeout(callback, 16),
+  cancelFrame: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+};
 
 /** As much of an HTMLAudioElement as the narrator uses. */
 class FakeAudio extends EventTarget {
   src = "";
   preload = "";
   paused = true;
+  /** Seconds; NaN until the clip's metadata has loaded. */
+  duration = Number.NaN;
+  currentTime = 0;
   plays = 0;
   loads = 0;
   /** The DOMException name the next play() is rejected with (null: it plays). */
@@ -23,6 +36,11 @@ class FakeAudio extends EventTarget {
   load() {
     this.loads++;
   }
+  /** The clip's metadata loads: its length is known. */
+  lasts(seconds: number) {
+    this.duration = seconds;
+    this.dispatchEvent(new Event("durationchange"));
+  }
   /** The clip plays to its end. */
   end() {
     this.paused = true;
@@ -37,6 +55,7 @@ class FakeAudio extends EventTarget {
 function setup() {
   const made: FakeAudio[] = [];
   const narrator = createNarrator({
+    scheduler,
     audio: () => {
       const audio = new FakeAudio();
       made.push(audio);
@@ -53,9 +72,17 @@ function outcome(promise: Promise<boolean>) {
   return result;
 }
 
-const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+const advance = (ms: number) => vi.advanceTimersByTimeAsync(ms);
+const settle = () => advance(0);
 
-afterEach(() => vi.restoreAllMocks());
+beforeEach(() => {
+  vi.useFakeTimers();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
 describe("createNarrator", () => {
   it("plays a step's clip and resolves once it has been heard to its end", async () => {
@@ -209,6 +236,60 @@ describe("createNarrator", () => {
     player().end();
     await settle();
     expect(spoken.heard).toBe(true);
+  });
+
+  it("gives up on a clip that hasn't ended 3 s after it should have, so a stalled one can't hold its step", async () => {
+    const { narrator, player } = setup();
+    const spoken = outcome(narrator.play("intro"));
+    player().lasts(5);
+    await advance(7999);
+    expect(spoken.heard).toBe("pending");
+    await advance(1);
+    expect(spoken.heard).toBe(false);
+    expect(player().paused).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("gives a clip whose length never comes 20 s at most", async () => {
+    const { narrator, player } = setup();
+    const spoken = outcome(narrator.play("intro"));
+    await advance(19_999);
+    expect(spoken.heard).toBe("pending");
+    await advance(1);
+    expect(spoken.heard).toBe(false);
+    expect(player().paused).toBe(true);
+  });
+
+  it("stops the stall clock while the clip is paused", async () => {
+    const { narrator, player } = setup();
+    const spoken = outcome(narrator.play("intro"));
+    player().lasts(5);
+    await advance(4000);
+    narrator.pause();
+    await advance(60_000);
+    expect(spoken.heard).toBe("pending");
+    narrator.resume();
+    await advance(3999);
+    expect(spoken.heard).toBe("pending");
+    await advance(1);
+    expect(spoken.heard).toBe(false);
+  });
+
+  it("leaves no stall clock behind a clip that has ended or been cut", async () => {
+    const { narrator, player } = setup();
+    const spoken = outcome(narrator.play("intro"));
+    player().lasts(5);
+    await advance(5000);
+    player().end();
+    await settle();
+    expect(spoken.heard).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+
+    void narrator.play("current");
+    narrator.stop();
+    expect(vi.getTimerCount()).toBe(0);
+    await advance(60_000);
+    expect(player().plays).toBe(2);
   });
 
   it("fetches the coming clips ahead, and lets go of the ones that have passed", () => {

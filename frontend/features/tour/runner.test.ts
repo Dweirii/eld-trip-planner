@@ -642,6 +642,35 @@ describe("createTourRunner with a voice", () => {
     expect(heard().slice(4)).toEqual(["play quick", "end quick"]);
   });
 
+  it("lets a step hold its own clip back and speak it later, and waits for it then", async () => {
+    const { voice, heard } = fakeVoice({ results: 2000 });
+    const { runner, index } = setup(
+      [
+        step("results", {
+          hold: 500,
+          enter: async (ctx) => {
+            // What the clip describes isn't on screen yet.
+            ctx.hush();
+            await ctx.wait(1000);
+            ctx.narrate();
+          },
+        }),
+        step("after", { hold: 1000 }),
+      ],
+      { narrator: voice },
+    );
+    runner.start();
+    await advance(999);
+    expect(heard()).toEqual(["play results", "stop"]);
+    await advance(1);
+    expect(heard()).toEqual(["play results", "stop", "play results"]);
+    await advance(2000 + AFTER_CLIP - 1);
+    expect(index()).toBe(0);
+    await advance(1);
+    expect(index()).toBe(1);
+    expect(heard().slice(3)).toEqual(["end results"]);
+  });
+
   it("does not speak a second clip for a step that has been left", async () => {
     let late: Ctx | undefined;
     const { voice, heard } = fakeVoice({ a: 1000, b: 1000, late: 1000 });
@@ -653,6 +682,7 @@ describe("createTourRunner with a voice", () => {
     await advance(0);
     runner.next();
     late?.narrate("late");
+    late?.hush();
     await advance(5000);
     expect(heard()).toEqual(["play a", "stop", "play b", "end b"]);
   });

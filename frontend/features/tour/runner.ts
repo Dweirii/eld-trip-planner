@@ -183,10 +183,15 @@ export interface StepContext<App> {
   /** Replace this step's caption (null: back to its own). */
   say(caption: string | null): void;
   /**
-   * Speak another clip once what the step has spoken so far has ended, if `when()` still holds by then;
-   * the step waits for it too. Without a voice, nothing happens.
+   * Speak a clip (the step's own, unless `id` names another) once what the step has spoken so far has
+   * ended, if `when()` still holds by then; the step waits for it too. Without a voice, nothing happens.
    */
-  narrate(id: string, when?: () => boolean): void;
+  narrate(id?: string, when?: () => boolean): void;
+  /**
+   * Cut what the step is speaking. A step whose clip describes what isn't on screen yet hushes it on
+   * entering, and speaks it with narrate() once it is.
+   */
+  hush(): void;
   /** Move the spotlight (null: none). */
   spotlight(target: TourTarget | null): void;
   /** Called when the tour pauses or resumes during this step. */
@@ -295,7 +300,7 @@ export function createTourRunner<App>({
     return spoken;
   }
 
-  function context(controller: AbortController): StepContext<App> {
+  function context(controller: AbortController, stepId: string): StepContext<App> {
     const { signal } = controller;
     const live = () => current?.controller === controller;
     const wait = (ms: number) => clock.sleep(ms / speed, signal);
@@ -332,11 +337,14 @@ export function createTourRunner<App>({
       say(caption) {
         if (live() && snapshot.say !== caption) update({ say: caption });
       },
-      narrate(id, when = () => true) {
+      narrate(id = stepId, when = () => true) {
         if (!current || !live()) return;
         const spoken = current.spoken.then(() => (live() && when() ? speak(id, wait) : undefined));
         spoken.catch(() => undefined);
         current.spoken = spoken;
+      },
+      hush() {
+        if (live()) narrator?.stop();
       },
       spotlight(target) {
         if (live()) update({ target });
@@ -359,7 +367,7 @@ export function createTourRunner<App>({
     narrator?.resume();
     const step = steps[index];
     const controller = new AbortController();
-    const ctx = context(controller);
+    const ctx = context(controller, step.id);
     const ahead = steps.slice(index + 1, index + 1 + CLIPS_AHEAD).flatMap((next) => [next.id, ...(next.clips ?? [])]);
     if (ahead.length > 0) narrator?.preload(ahead);
     const entered = { controller, ctx, spoken: speak(step.id, ctx.wait) };

@@ -72,23 +72,28 @@ function run(ids: string[], app: ReturnType<typeof workspace>["app"], narrator?:
 /** A voice whose clips last what the test says, in fake-timer time. */
 function fakeVoice(clips: Record<string, number>) {
   const played: string[] = [];
+  /** The clip being spoken right now (null: silence). */
+  let speaking: string | null = null;
   let cut = () => undefined as void;
   const voice: TourVoice = {
     play: (id) =>
       new Promise((resolve) => {
         played.push(id);
-        const timer = setTimeout(() => resolve(true), clips[id]);
-        cut = () => {
+        speaking = id;
+        const over = (heard: boolean) => {
           clearTimeout(timer);
-          resolve(false);
+          if (speaking === id) speaking = null;
+          resolve(heard);
         };
+        const timer = setTimeout(() => over(true), clips[id]);
+        cut = () => over(false);
       }),
     pause: () => undefined,
     resume: () => undefined,
     stop: () => cut(),
     preload: () => undefined,
   };
-  return { voice, played };
+  return { voice, played, speaking: () => speaking };
 }
 
 const advance = (ms: number) => vi.advanceTimersByTimeAsync(ms);
@@ -243,6 +248,55 @@ describe("the guided tour's steps", () => {
     const { voice, played } = fakeVoice({ results: 1000, [PLANNING_VOICE]: 1000 });
     run(["results"], app, voice);
     await advance(API_MS + TIMING.results);
+    expect(new Set(played)).toEqual(new Set(["results"]));
+  });
+
+  it("holds the results line until the results are in, when Next reaches the step while the plan is on its way", async () => {
+    const { app } = workspace(["ok"], { values: TOUR_TRIP });
+    const { voice, speaking } = fakeVoice({ plan: 500, [PLANNING_VOICE]: 500, results: 4000, itinerary: 1000 });
+    const { runner } = run(["plan", "results", "itinerary"], app, voice);
+    await advance(PRESS + 100);
+    expect(app.state.pending).toBe(true);
+    runner.next();
+    // "Routing…" is on screen: "Here is the result…" would be spoken over it.
+    await advance(0);
+    expect(runner.caption()).toBe(PLANNING_CAPTION);
+    expect(speaking()).toBeNull();
+    await advance(API_MS - 100 - 1);
+    expect(speaking()).toBeNull();
+    await advance(1);
+    expect(runner.caption()).toMatch(/^972 miles/);
+    expect(speaking()).toBe("results");
+    // And the step still waits for its line.
+    await advance(4000 + AFTER_CLIP - 1);
+    expect(runner.getSnapshot().index).toBe(1);
+    await advance(TIMING.results);
+    expect(runner.getSnapshot().index).toBe(2);
+  });
+
+  it("holds a later step's line too when it has to plan the trip itself, and says nothing if that fails", async () => {
+    const reached = workspace(["ok"]);
+    const first = fakeVoice({ rules: 1000 });
+    run(["rules"], reached.app, first.voice);
+    await advance(API_MS - 1);
+    expect(first.speaking()).toBeNull();
+    await advance(1);
+    expect(first.speaking()).toBe("rules");
+
+    const down = workspace(["down", "down"]);
+    const second = fakeVoice({ rules: 1000 });
+    const { onEnd } = run(["rules"], down.app, second.voice);
+    await advance(API_MS + TIMING.retryAfter + API_MS);
+    expect(onEnd).toHaveBeenCalledWith("exited");
+    expect(second.speaking()).toBeNull();
+  });
+
+  it("speaks a results step's line at once when the trip is already planned", async () => {
+    const { app } = workspace(["ok"], { results: true, trip: sampleTrip });
+    const { voice, played, speaking } = fakeVoice({ results: 1000 });
+    run(["results"], app, voice);
+    await advance(0);
+    expect(speaking()).toBe("results");
     expect(played).toEqual(["results"]);
   });
 
