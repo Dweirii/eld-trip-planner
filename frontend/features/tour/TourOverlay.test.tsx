@@ -1,8 +1,9 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createNarrator } from "./narrator";
 import { TourOverlay, type TourOverlayProps } from "./TourOverlay";
-import { useTourCaptions } from "./useTour";
+import { useTourCaptions, useTourVoice } from "./useTour";
 
 function props(overrides: Partial<TourOverlayProps> = {}): TourOverlayProps {
   return {
@@ -12,11 +13,13 @@ function props(overrides: Partial<TourOverlayProps> = {}): TourOverlayProps {
     caption: "…then the pickup and the dropoff.",
     paused: false,
     captions: true,
+    voice: true,
     target: null,
     onPrevious: vi.fn(),
     onToggle: vi.fn(),
     onNext: vi.fn(),
     onToggleCaptions: vi.fn(),
+    onToggleVoice: vi.fn(),
     onExit: vi.fn(),
     ...overrides,
   };
@@ -26,6 +29,15 @@ function props(overrides: Partial<TourOverlayProps> = {}): TourOverlayProps {
 function WithCaptions(overrides: Partial<TourOverlayProps>) {
   const { captions, toggleCaptions } = useTourCaptions();
   return <TourOverlay {...props(overrides)} captions={captions} onToggleCaptions={toggleCaptions} />;
+}
+
+/** No sound in tests: a narrator in a browser with no audio. */
+const silentNarrator = createNarrator({ audio: () => null });
+
+/** The overlay with the real, remembered voice preference. */
+function WithVoice(overrides: Partial<TourOverlayProps>) {
+  const { voice, voiceBlocked, toggleVoice } = useTourVoice(silentNarrator);
+  return <TourOverlay {...props(overrides)} voice={voice} voiceBlocked={voiceBlocked} onToggleVoice={toggleVoice} />;
 }
 
 beforeEach(() => {
@@ -63,8 +75,10 @@ describe("TourOverlay", () => {
     await userEvent.click(screen.getByRole("button", { name: "Previous step" }));
     await userEvent.click(screen.getByRole("button", { name: "Pause tour" }));
     await userEvent.click(screen.getByRole("button", { name: "Next step" }));
+    await userEvent.click(screen.getByRole("button", { name: "Turn voice off" }));
     await userEvent.click(screen.getByRole("button", { name: "Captions" }));
     await userEvent.click(screen.getByRole("button", { name: "Exit tour" }));
+    expect(all.onToggleVoice).toHaveBeenCalledOnce();
     expect(all.onPrevious).toHaveBeenCalledOnce();
     expect(all.onToggle).toHaveBeenCalledOnce();
     expect(all.onNext).toHaveBeenCalledOnce();
@@ -95,6 +109,48 @@ describe("TourOverlay", () => {
     expect(screen.getByText("…then the pickup and the dropoff.")).not.toHaveClass("sr-only");
   });
 
+  it("offers to turn the voice off or on, in the caption card and in the control pill", () => {
+    const { rerender } = render(<TourOverlay {...props()} />);
+    expect(screen.getByRole("button", { name: "Turn voice off" })).toHaveAttribute("title", "Turn voice off (V)");
+    expect(screen.queryByRole("button", { name: "Turn voice on" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+
+    rerender(<TourOverlay {...props({ voice: false })} />);
+    expect(screen.getByRole("button", { name: "Turn voice on" })).toHaveAttribute("title", "Turn voice on (V)");
+
+    rerender(<TourOverlay {...props({ captions: false })} />);
+    expect(screen.getByRole("button", { name: "Turn voice off" })).toBeVisible();
+    rerender(<TourOverlay {...props({ captions: false, voice: false })} />);
+    expect(screen.getByRole("button", { name: "Turn voice on" })).toBeVisible();
+  });
+
+  it("turns the voice off and on, and remembers that", async () => {
+    const { unmount } = render(<WithVoice />);
+    await userEvent.click(screen.getByRole("button", { name: "Turn voice off" }));
+    expect(screen.getByRole("button", { name: "Turn voice on" })).toBeVisible();
+    expect(window.localStorage.getItem("milepost:tour-voice")).toBe("off");
+    unmount();
+
+    render(<WithVoice />);
+    await userEvent.click(screen.getByRole("button", { name: "Turn voice on" }));
+    expect(screen.getByRole("button", { name: "Turn voice off" })).toBeVisible();
+    expect(window.localStorage.getItem("milepost:tour-voice")).toBe("on");
+  });
+
+  it("says to click the voice button when the browser has blocked autoplay", () => {
+    for (const captions of [true, false]) {
+      const { unmount } = render(<TourOverlay {...props({ captions, voiceBlocked: true })} />);
+      const hint = screen.getByRole("status");
+      expect(hint).toHaveTextContent("Click 🔊 to hear the tour");
+      expect(hint).toBeVisible();
+      // The voice is on but can't be heard yet: a click on its button is what turns it on.
+      expect(screen.getByRole("button", { name: "Turn voice on" })).toHaveAccessibleDescription(
+        "Click 🔊 to hear the tour",
+      );
+      unmount();
+    }
+  });
+
   it("keeps working when storage is blocked", async () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
       throw new Error("blocked");
@@ -102,9 +158,14 @@ describe("TourOverlay", () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("blocked");
     });
-    render(<WithCaptions />);
+    const { unmount } = render(<WithCaptions />);
     await userEvent.click(screen.getByRole("button", { name: "Captions" }));
     expect(screen.getByRole("button", { name: "Captions" })).toHaveAttribute("aria-pressed", "false");
+    unmount();
+
+    render(<WithVoice />);
+    await userEvent.click(screen.getByRole("button", { name: "Turn voice off" }));
+    expect(screen.getByRole("button", { name: "Turn voice on" })).toBeVisible();
     vi.restoreAllMocks();
   });
 });

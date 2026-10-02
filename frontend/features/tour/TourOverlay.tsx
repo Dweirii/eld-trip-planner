@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { type ReactNode, useCallback, useEffect, useEffectEvent, useRef } from "react";
+import { type ReactNode, useCallback, useEffect, useEffectEvent, useId, useRef } from "react";
 import { type Box, easeInOut, targetBox, targetElements, visibleBox } from "./dom";
 import type { TourTarget } from "./runner";
 import { TOUR_UI_ATTRIBUTE } from "./useTour";
@@ -16,6 +16,10 @@ export interface TourOverlayProps {
   paused: boolean;
   /** Off: the card shrinks to a slim control pill, for a clean recording. */
   captions: boolean;
+  /** The narration is on. */
+  voice: boolean;
+  /** The browser won't play the voice before a click (its autoplay policy): the voice button says so. */
+  voiceBlocked?: boolean;
   target: TourTarget | null;
   /** Desktop: the trip replay's bar is open; the card moves to the top of the map, out of its way. */
   raised?: boolean;
@@ -23,10 +27,12 @@ export interface TourOverlayProps {
   onToggle: () => void;
   onNext: () => void;
   onToggleCaptions: () => void;
+  onToggleVoice: () => void;
   onExit: () => void;
 }
 
 const PAUSED = "Paused (press Space to continue)";
+const VOICE_HINT = "Click 🔊 to hear the tour";
 
 /** Desktop: the map keeps this much more room at the bottom while the tour runs, for the caption card. */
 export const CAPTION_ROOM = 170;
@@ -158,10 +164,13 @@ function Mileposts({ index, total }: { index: number; total: number }) {
 function Controls({
   paused,
   captions,
+  voice,
+  voiceBlocked = false,
   onPrevious,
   onToggle,
   onNext,
   onToggleCaptions,
+  onToggleVoice,
   onExit,
   className,
 }: TourOverlayProps & { className?: string }) {
@@ -177,6 +186,7 @@ function Controls({
         <ArrowIcon direction="right" />
       </IconButton>
       <span className={clsx(captions ? "flex-1" : "w-1")} />
+      <VoiceButton on={voice} blocked={voiceBlocked} onClick={onToggleVoice} />
       <button
         type="button"
         aria-label="Captions"
@@ -201,6 +211,41 @@ function Controls({
         <CloseIcon />
       </IconButton>
     </div>
+  );
+}
+
+/**
+ * The voice's mute control: always within reach, in the card and in the pill. When the browser has
+ * blocked autoplay, the voice is on but unheard, and a hint under the button asks for the click.
+ */
+function VoiceButton({ on, blocked, onClick }: { on: boolean; blocked: boolean; onClick: () => void }) {
+  const hintId = useId();
+  const label = on && !blocked ? "Turn voice off" : "Turn voice on";
+  return (
+    <span className="relative">
+      <button
+        type="button"
+        aria-label={label}
+        aria-describedby={blocked ? hintId : undefined}
+        title={`${label} (V)`}
+        onClick={onClick}
+        className={clsx(
+          "grid size-8 place-items-center rounded-full transition hover:bg-surface active:scale-95",
+          on ? "text-brand" : "text-muted hover:text-brand",
+        )}
+      >
+        <SpeakerIcon muted={!on} />
+      </button>
+      {blocked && (
+        <span
+          id={hintId}
+          role="status"
+          className="animate-caption-in pointer-events-none absolute right-0 top-full mt-2 whitespace-nowrap rounded-lg bg-brand px-2.5 py-1 text-[11.5px] font-semibold text-white shadow-[0_6px_18px_rgb(4_59_75/0.3)]"
+        >
+          {VOICE_HINT}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -342,6 +387,27 @@ function PauseIcon() {
     <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
       <rect x="3.5" y="2.5" width="3.2" height="11" rx="1.1" fill="currentColor" />
       <rect x="9.3" y="2.5" width="3.2" height="11" rx="1.1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function SpeakerIcon({ muted }: { muted: boolean }) {
+  return (
+    <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false">
+      <path
+        d="M2.2 6.2h2.3L8 3.3v9.4L4.5 9.8H2.2z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <path
+        d={muted ? "M10.7 6.2l3.5 3.6M14.2 6.2l-3.5 3.6" : "M10.4 5.9a3 3 0 0 1 0 4.2M12.3 4a5.7 5.7 0 0 1 0 8"}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

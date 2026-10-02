@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import type { TourController } from "./controller";
+import { type Narrator, createNarrator } from "./narrator";
 import {
   IDLE_SNAPSHOT,
   type RunnerOptions,
@@ -15,6 +16,7 @@ import {
 import { TOUR_STEPS } from "./steps";
 
 const CAPTIONS_KEY = "milepost:tour-captions";
+const VOICE_KEY = "milepost:tour-voice";
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 /** Marks the tour's own controls: clicks there are not the user taking over. */
 export const TOUR_UI_ATTRIBUTE = "data-tour-ui";
@@ -27,37 +29,68 @@ export function tourSpeed(param: string | null): number {
   return Number.isFinite(speed) ? Math.min(20, Math.max(1, speed)) : 1;
 }
 
-function readCaptions(): boolean {
+/** On, unless this browser remembers the setting off. */
+function readSetting(key: string): boolean {
   try {
-    return window.localStorage.getItem(CAPTIONS_KEY) !== "off";
+    return window.localStorage.getItem(key) !== "off";
   } catch {
     return true;
   }
 }
 
-function writeCaptions(on: boolean) {
+function writeSetting(key: string, on: boolean) {
   try {
-    window.localStorage.setItem(CAPTIONS_KEY, on ? "on" : "off");
+    window.localStorage.setItem(key, on ? "on" : "off");
   } catch {
     // Storage blocked (private mode, embedded): the choice lasts until the page closes.
   }
 }
 
-/** Captions on or off; off shrinks the caption card to a slim control pill. Remembered in this browser. */
-export function useTourCaptions() {
-  const [captions, setCaptions] = useState(readCaptions);
-  const toggleCaptions = useCallback(() => {
-    setCaptions((on) => !on);
+/** A setting that starts on and is remembered in this browser. */
+function useSetting(key: string) {
+  const [on, setOn] = useState(() => readSetting(key));
+  const toggle = useCallback(() => {
+    setOn((value) => !value);
   }, []);
   useEffect(() => {
-    if (captions !== readCaptions()) writeCaptions(captions);
-  }, [captions]);
+    if (on !== readSetting(key)) writeSetting(key, on);
+  }, [key, on]);
+  return [on, toggle] as const;
+}
+
+/** Captions on or off; off shrinks the caption card to a slim control pill. Remembered in this browser. */
+export function useTourCaptions() {
+  const [captions, toggleCaptions] = useSetting(CAPTIONS_KEY);
   return { captions, toggleCaptions };
+}
+
+const notBlocked = () => false;
+
+/**
+ * The voice on or off: on when the tour starts, unless this browser remembers it off. `silent` (the
+ * test-only speed-up) forces it off and leaves the remembered choice alone.
+ */
+export function useTourVoice(narrator: Narrator, silent = false) {
+  const [wanted, toggle] = useSetting(VOICE_KEY);
+  const blocked = useSyncExternalStore(narrator.subscribe, () => narrator.blocked, notBlocked);
+  const voice = wanted && !silent;
+  useEffect(() => {
+    narrator.setEnabled(voice);
+  }, [narrator, voice]);
+  const toggleVoice = useCallback(() => {
+    if (silent) return;
+    // The browser wanted a click before it would play anything: this is that click, and the voice stays on.
+    const unblocking = wanted && narrator.blocked;
+    narrator.unblock();
+    if (!unblocking) toggle();
+  }, [narrator, silent, wanted, toggle]);
+  return { voice, voiceBlocked: voice && blocked, toggleVoice };
 }
 
 /** One tour at a time: starting again replaces the run under way. */
 function createSession() {
   let runner: TourRunner | null = null;
+  let speed = 1;
   let unsubscribe = () => undefined as void;
   const listeners = new Set<() => void>();
   const notify = () => listeners.forEach((listener) => listener());
@@ -78,8 +111,13 @@ function createSession() {
     get runner() {
       return runner;
     },
+    /** The speed the tour under way was started at (the URL loses its params once it starts). */
+    get speed() {
+      return speed;
+    },
     start(options: RunnerOptions<TourController>) {
       stop();
+      speed = options.speed ?? 1;
       runner = createTourRunner(options);
       unsubscribe = runner.subscribe(notify);
       runner.start();
@@ -119,6 +157,7 @@ function leftToTarget(key: string, target: Element): boolean {
 export interface UseTourOptions {
   steps?: readonly TourStep<TourController>[];
   scheduler?: Scheduler;
+  narrator?: Narrator;
 }
 
 export interface Tour {
@@ -134,6 +173,11 @@ export interface Tour {
   target: TourTarget | null;
   captions: boolean;
   toggleCaptions: () => void;
+  /** The narration is on (it may still be waiting for a click: `voiceBlocked`). */
+  voice: boolean;
+  /** The browser won't play the voice until the user clicks its button. */
+  voiceBlocked: boolean;
+  toggleVoice: () => void;
   toggle: () => void;
   next: () => void;
   previous: () => void;
@@ -142,23 +186,26 @@ export interface Tour {
 
 /**
  * The guided tour in the workspace: starts on `?tour=1` (then strips it, so a reload doesn't restart
- * it), takes Space, ←, →, C and Esc, and pauses when the user clicks in the app or works it from the
- * keyboard.
+ * it), takes Space, ←, →, C, V and Esc, and pauses when the user clicks in the app or works it from the
+ * keyboard. Each step is spoken, unless the voice is off; sped up (`?tourSpeed=`), the tour is silent.
  */
 export function useTour(
   controller: TourController | null,
-  { steps = TOUR_STEPS, scheduler }: UseTourOptions = {},
+  { steps = TOUR_STEPS, scheduler, narrator: givenNarrator }: UseTourOptions = {},
 ): Tour {
   const params = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
   const [session] = useState(createSession);
+  const [narrator] = useState(() => givenNarrator ?? createNarrator());
   const snapshot = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
   const { captions, toggleCaptions } = useTourCaptions();
 
   const query = params.toString();
   const requested = params.get("tour") === "1";
   const speed = tourSpeed(params.get("tourSpeed"));
+  // Before the effect below starts the tour, so the first step already knows whether to speak.
+  const { voice, voiceBlocked, toggleVoice } = useTourVoice(narrator, (session.runner ? session.speed : speed) > 1);
 
   useEffect(() => {
     if (!requested || !controller) return;
@@ -168,8 +215,15 @@ export function useTour(
       return;
     }
     window.history.replaceState(null, "", "/");
-    session.start({ steps, app: controller, scheduler, speed, reducedMotion: prefersReducedMotion });
-  }, [requested, controller, pathname, router, query, session, steps, scheduler, speed]);
+    session.start({
+      steps,
+      app: controller,
+      scheduler,
+      speed,
+      reducedMotion: prefersReducedMotion,
+      narrator: speed > 1 ? undefined : narrator,
+    });
+  }, [requested, controller, pathname, router, query, session, steps, scheduler, speed, narrator]);
 
   // Leaving the page ends the tour.
   useEffect(() => () => session.stop(), [session]);
@@ -185,6 +239,8 @@ export function useTour(
       ArrowLeft: () => session.runner?.previous(),
       c: toggleCaptions,
       C: toggleCaptions,
+      v: toggleVoice,
+      V: toggleVoice,
       Escape: () => session.runner?.exit(),
     };
     function onKeyDown(event: KeyboardEvent) {
@@ -207,7 +263,7 @@ export function useTour(
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [active, session, toggleCaptions]);
+  }, [active, session, toggleCaptions, toggleVoice]);
 
   // The user clicking in the app takes over (as does working it from the keyboard, above): pause, and
   // let their click do what it does.
@@ -233,6 +289,9 @@ export function useTour(
     target: snapshot.target,
     captions,
     toggleCaptions,
+    voice,
+    voiceBlocked,
+    toggleVoice,
     toggle: () => session.runner?.toggle(),
     next: () => session.runner?.next(),
     previous: () => session.runner?.previous(),

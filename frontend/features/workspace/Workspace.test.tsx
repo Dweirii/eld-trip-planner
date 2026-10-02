@@ -37,6 +37,8 @@ beforeEach(() => {
   // Replay frames never run on their own here; the tests scrub instead.
   vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
   vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  // jsdom can't play audio: the guided tour runs without its voice.
+  vi.stubGlobal("Audio", undefined);
   Element.prototype.scrollIntoView = vi.fn();
 });
 
@@ -146,6 +148,8 @@ describe("Workspace", () => {
       const tour = screen.getByRole("region", { name: "Guided tour" });
       expect(within(tour).getByText(/Milepost plans a truck trip/)).toBeInTheDocument();
       expect(window.location.search).toBe("");
+      // Sped up, the tour is silent, and stays so once the params are gone.
+      expect(within(tour).getByRole("button", { name: "Turn voice on" })).toBeInTheDocument();
       expect(await screen.findByRole("heading", { name: "Plan a trip" })).toBeInTheDocument();
 
       const current = screen.getByRole("combobox", { name: "Current location" });
@@ -161,6 +165,7 @@ describe("Workspace", () => {
       window.history.replaceState(null, "", "/?tour=1");
       render(<Workspace />);
       const tour = screen.getByRole("region", { name: "Guided tour" });
+      expect(within(tour).getByRole("button", { name: "Turn voice off" })).toBeInTheDocument();
       fireEvent.keyDown(document.body, { key: " " });
       expect(within(tour).getByText("Paused (press Space to continue)")).toBeInTheDocument();
       expect(within(tour).getByRole("button", { name: "Resume tour" })).toBeInTheDocument();
