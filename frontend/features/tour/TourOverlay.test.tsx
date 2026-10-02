@@ -87,6 +87,24 @@ describe("TourOverlay", () => {
     expect(screen.getByRole("button", { name: "Captions" })).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("starts with the focus on Pause, and keeps it there as the button turns into Resume", () => {
+    // The top bar's link, which started the tour, has the focus until then.
+    const link = document.body.appendChild(Object.assign(document.createElement("a"), { href: "/?tour=1" }));
+    link.focus();
+    const { rerender, unmount } = render(<TourOverlay {...props()} />);
+    expect(screen.getByRole("button", { name: "Pause tour" })).toHaveFocus();
+    rerender(<TourOverlay {...props({ paused: true })} />);
+    expect(screen.getByRole("button", { name: "Resume tour" })).toHaveFocus();
+    rerender(<TourOverlay {...props({ index: 3, entry: 4, caption: "Next" })} />);
+    expect(screen.getByRole("button", { name: "Pause tour" })).toHaveFocus();
+    unmount();
+
+    link.focus();
+    render(<TourOverlay {...props({ captions: false })} />);
+    expect(screen.getByRole("button", { name: "Pause tour" })).toHaveFocus();
+    link.remove();
+  });
+
   it("says when it is paused, and offers to resume", () => {
     render(<TourOverlay {...props({ paused: true })} />);
     expect(screen.getByText("Paused (press Space to continue)")).toBeVisible();

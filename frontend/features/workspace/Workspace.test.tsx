@@ -151,6 +151,7 @@ describe("Workspace", () => {
       // Sped up, the tour is silent, and stays so once the params are gone.
       expect(within(tour).getByRole("button", { name: "Turn voice on" })).toBeInTheDocument();
       expect(await screen.findByRole("heading", { name: "Plan a trip" })).toBeInTheDocument();
+      expect(within(tour).getByRole("button", { name: "Pause tour" })).toHaveFocus();
 
       const current = screen.getByRole("combobox", { name: "Current location" });
       await waitFor(() => expect(current).toHaveValue("Chicago, IL"), { timeout: 3000 });
@@ -178,6 +179,34 @@ describe("Workspace", () => {
       fireEvent.keyDown(document.body, { key: "Escape" });
     });
 
+    it("starts with the focus on its Pause button, so Space pauses and then resumes straight away", async () => {
+      navigation.search = "tour=1";
+      window.history.replaceState(null, "", "/?tour=1");
+      // "Take the tour" in the top bar: clicked, it keeps the focus, and Space on a link is the link's.
+      const link = document.body.appendChild(Object.assign(document.createElement("a"), { href: "/?tour=1" }));
+      link.focus();
+      render(<Workspace />);
+      const tour = screen.getByRole("region", { name: "Guided tour" });
+      expect(within(tour).getByRole("button", { name: "Pause tour" })).toHaveFocus();
+
+      await userEvent.keyboard(" ");
+      expect(within(tour).getByText("Paused (press Space to continue)")).toBeInTheDocument();
+      expect(within(tour).getByRole("button", { name: "Resume tour" })).toHaveFocus();
+      await userEvent.keyboard(" ");
+      expect(within(tour).queryByText("Paused (press Space to continue)")).not.toBeInTheDocument();
+      expect(within(tour).getByRole("button", { name: "Pause tour" })).toHaveFocus();
+
+      // Taking over with a click in the app leaves the focus on nothing that Space presses: Space resumes.
+      fireEvent.pointerDown(screen.getByRole("heading", { name: "Plan a trip" }));
+      (document.activeElement as HTMLElement).blur();
+      expect(within(tour).getByRole("button", { name: "Resume tour" })).toBeInTheDocument();
+      await userEvent.keyboard(" ");
+      expect(within(tour).getByRole("button", { name: "Pause tour" })).toBeInTheDocument();
+
+      fireEvent.keyDown(document.body, { key: "Escape" });
+      link.remove();
+    });
+
     it("leaves focus where it is when the tour brings up the results (its captions narrate instead)", async () => {
       navigation.search = "tour=1&tourSpeed=20";
       window.history.replaceState(null, "", "/?tour=1&tourSpeed=20");
@@ -187,7 +216,7 @@ describe("Workspace", () => {
       const heading = await screen.findByRole("heading", { name: TITLE });
       expect(within(screen.getByRole("region", { name: "Guided tour" })).getByText("6 / 16")).toBeInTheDocument();
       expect(heading).not.toHaveFocus();
-      expect(document.activeElement).toBe(document.body);
+      expect(screen.getByRole("button", { name: "Pause tour" })).toHaveFocus();
     });
   });
 

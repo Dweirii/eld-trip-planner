@@ -48,7 +48,8 @@ export function Workspace({ initialTrip = null }: { initialTrip?: Trip | null })
 
   // Move focus to the panel's heading when the panel changes (a plan succeeds, Edit trip,
   // Back to results, New trip), but not on first load, and not when the guided tour changes it:
-  // the tour narrates through its own live captions, so focus stays where the user left it.
+  // the tour narrates through its own live captions, so focus stays where it is (on the tour's Pause
+  // button, where it starts, or wherever the user has put it since).
   const headingRef = useRef<HTMLHeadingElement>(null);
   const view = showResults ? `results:${trip.id}` : trip ? "edit" : "form";
   const lastView = useRef(view);

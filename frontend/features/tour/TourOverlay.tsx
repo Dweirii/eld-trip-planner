@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { type ReactNode, useCallback, useEffect, useEffectEvent, useId, useRef } from "react";
+import { type ReactNode, type Ref, useCallback, useEffect, useEffectEvent, useId, useRef } from "react";
 import { type Box, easeInOut, targetBox, targetElements, visibleBox } from "./dom";
 import type { TourTarget } from "./runner";
 import { TOUR_UI_ATTRIBUTE } from "./useTour";
@@ -51,6 +51,13 @@ function coveredShare(target: Box, card: Box): number {
 export function TourOverlay(props: TourOverlayProps) {
   const { index, total, entry, caption, detail, paused, captions, target, raised = false } = props;
   const cardRef = useRef<HTMLElement>(null);
+
+  // The tour starts with the focus on Pause, so Space and Enter pause and resume it straight away. The
+  // link that started it would otherwise keep the focus, and Space on a link is the link's, not the tour's.
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    toggleRef.current?.focus({ preventScroll: true });
+  }, []);
 
   // When the spotlight's target sits under the card (a log sheet's remarks; on a phone, a map pin), the
   // card moves out of the way (desktop: to the top of the map; small screens: to the bottom) until the
@@ -115,7 +122,7 @@ export function TourOverlay(props: TourOverlayProps) {
             <p aria-live="polite" className="text-[12px] font-bold text-coral-ink">
               {paused && <span className="mt-1.5 block">{PAUSED}</span>}
             </p>
-            <Controls {...props} className="mt-2.5" />
+            <Controls {...props} toggleRef={toggleRef} className="mt-2.5" />
           </>
         ) : (
           <>
@@ -125,7 +132,7 @@ export function TourOverlay(props: TourOverlayProps) {
                 {paused && <span className="ml-1.5">{PAUSED}</span>}
               </span>
               <span aria-hidden="true" className="mx-1.5 h-4 w-px bg-line" />
-              <Controls {...props} />
+              <Controls {...props} toggleRef={toggleRef} />
             </div>
             {/* Screen readers still hear each step with the captions hidden. */}
             <p aria-live="polite" aria-atomic="true" className="sr-only">
@@ -172,14 +179,21 @@ function Controls({
   onToggleCaptions,
   onToggleVoice,
   onExit,
+  toggleRef,
   className,
-}: TourOverlayProps & { className?: string }) {
+}: TourOverlayProps & { toggleRef: Ref<HTMLButtonElement>; className?: string }) {
   return (
     <div className={clsx("flex items-center gap-0.5", className)}>
       <IconButton label="Previous step" shortcut="←" onClick={onPrevious}>
         <ArrowIcon direction="left" />
       </IconButton>
-      <IconButton label={paused ? "Resume tour" : "Pause tour"} shortcut="Space" onClick={onToggle} primary>
+      <IconButton
+        ref={toggleRef}
+        label={paused ? "Resume tour" : "Pause tour"}
+        shortcut="Space"
+        onClick={onToggle}
+        primary
+      >
         {paused ? <PlayIcon /> : <PauseIcon />}
       </IconButton>
       <IconButton label="Next step" shortcut="→" onClick={onNext}>
@@ -250,12 +264,14 @@ function VoiceButton({ on, blocked, onClick }: { on: boolean; blocked: boolean; 
 }
 
 function IconButton({
+  ref,
   label,
   shortcut,
   onClick,
   primary = false,
   children,
 }: {
+  ref?: Ref<HTMLButtonElement>;
   label: string;
   shortcut: string;
   onClick: () => void;
@@ -264,6 +280,7 @@ function IconButton({
 }) {
   return (
     <button
+      ref={ref}
       type="button"
       aria-label={label}
       title={`${label} (${shortcut})`}

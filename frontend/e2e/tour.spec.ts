@@ -50,6 +50,14 @@ test("the top bar starts the tour", async ({ page }) => {
   await page.getByRole("link", { name: "Take the tour" }).click();
   const tour = page.getByRole("region", { name: "Guided tour" });
   await expect(tour).toContainText("1 / 16");
+  // The focus leaves the link for the tour's Pause button, so Space pauses and resumes straight away.
+  await expect(tour.getByRole("button", { name: "Pause tour" })).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(tour).toContainText("Paused (press Space to continue)");
+  await expect(tour.getByRole("button", { name: "Resume tour" })).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(tour).not.toContainText("Paused");
+  await expect(tour.getByRole("button", { name: "Pause tour" })).toBeFocused();
   // At its real pace the tour speaks, and V mutes it.
   await expect(tour.getByRole("button", { name: "Turn voice off" })).toBeVisible();
   await page.keyboard.press("v");
