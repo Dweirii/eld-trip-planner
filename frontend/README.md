@@ -30,7 +30,8 @@ features/
   tour/                 the guided tour (top bar "Take the tour", or /?tour=1): steps.ts (captions, what each
                         step shows, timings), runner.ts (pure, pausable step runner), typing.ts, controller.ts
                         (what Workspace lets the tour drive), useTour (URL, keyboard), TourOverlay (captions,
-                        controls, spotlight)
+                        controls, spotlight); voice.ts and voice-lines.json (what is spoken at each step),
+                        narrator.ts (plays the clips in public/tour/voice/)
   workspace/            Workspace shell, ResultsPanel, usePlanner (all planner state), toast, overlay
 components/             TopBar, HowItWorks, StopIcon; components/ui/ holds shared primitives (Tabs)
 lib/
@@ -67,7 +68,9 @@ MapLibre 6 starts a module worker (`maplibre-gl-worker.mjs`, which imports `mapl
 
 ## The tour's narration
 
-The guided tour speaks one pre-generated clip per step. The clips are static files in `public/tour/voice/` (committed, with a `manifest.json`), so the running app needs no key and makes no call to a speech service.
+The guided tour speaks one pre-generated clip per step, and each step waits for its clip to end. The clips are static files in `public/tour/voice/` (committed, with a `manifest.json`), so the running app needs no key and makes no call to a speech service. A clip that is missing is skipped, and the tour keeps its own pace.
+
+The voice is on when the tour starts. The speaker button on the tour's controls, or the **V** key, turns it off and on, and the choice is remembered in the browser. If the browser blocks autoplay (a direct load of `/?tour=1`, with no click yet), the tour runs silently and the button asks for a click. With `?tourSpeed=` above 1, used by the e2e test, the voice is always off.
 
 The spoken text lives in `features/tour/voice-lines.json`, one line per step id. To change a line, edit it there and regenerate:
 
