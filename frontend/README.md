@@ -30,7 +30,9 @@ features/
   tour/                 the guided tour (top bar "Take the tour", or /?tour=1): steps.ts (captions, what each
                         step shows, timings), runner.ts (pure, pausable step runner), typing.ts, controller.ts
                         (what Workspace lets the tour drive), useTour (URL, keyboard), TourOverlay (captions,
-                        controls, spotlight)
+                        controls, spotlight); voice.ts and voice-lines.json (what is spoken at each step),
+                        narrator.ts (plays the clips in public/tour/voice/); invite.ts and TourInvite (the top
+                        bar's tour pill, and the first-visit invitation to press it)
   workspace/            Workspace shell, ResultsPanel, usePlanner (all planner state), toast, overlay
 components/             TopBar, HowItWorks, StopIcon; components/ui/ holds shared primitives (Tabs)
 lib/
@@ -39,7 +41,7 @@ lib/
   format.ts             times, dates, hours and miles (times are read from the string, never converted)
   stops.ts              stop names, colours and shapes shared by the map, legend, itinerary and form
 e2e/                    Playwright smoke test and guided tour test
-scripts/                copy-maplibre-worker.mjs
+scripts/                copy-maplibre-worker.mjs, generate-tour-voice.mjs (the tour's narration clips)
 ```
 
 ## Scripts
@@ -53,6 +55,7 @@ scripts/                copy-maplibre-worker.mjs
 | `pnpm typecheck` | Generate Next's route types, then `tsc --noEmit` |
 | `pnpm lint` | ESLint (`eslint .`) |
 | `pnpm gen:api` | Regenerate `lib/api/schema.d.ts` from `../backend/openapi.yaml` |
+| `pnpm gen:voice` | Regenerate the guided tour's narration clips with ElevenLabs (needs `ELEVENLABS_API_KEY`; see below) |
 
 ## Environment
 
@@ -63,6 +66,28 @@ Copy `.env.example` to `.env.local`.
 ## The MapLibre worker copy step
 
 MapLibre 6 starts a module worker (`maplibre-gl-worker.mjs`, which imports `maplibre-gl-shared.mjs`). Turbopack does not bundle or emit that worker. So `dev` and `build` first run `scripts/copy-maplibre-worker.mjs`, which copies both files into `public/maplibre/` (git-ignored), and `RouteMap` points `maplibregl.setWorkerUrl` at the copy. If the map stays blank, run `pnpm build` or `pnpm dev` once to create the copy.
+
+## The tour's narration
+
+The guided tour speaks one pre-generated clip per step, and each step waits for its clip to end. The clips are static files in `public/tour/voice/` (committed, with a `manifest.json`), so the running app needs no key and makes no call to a speech service. A clip that is missing is skipped, and the tour keeps its own pace.
+
+The voice is on when the tour starts. The speaker button on the tour's controls, or the **V** key, turns it off and on, and the choice is remembered in the browser. If the browser blocks autoplay (a direct load of `/?tour=1`, with no click yet), the tour runs silently and the button asks for a click. With `?tourSpeed=` above 1, used by the e2e test, the voice is always off.
+
+The spoken text lives in `features/tour/voice-lines.json`, one line per step id. To change a line, edit it there and regenerate:
+
+```bash
+pnpm gen:voice            # make the clips whose text or voice changed
+pnpm gen:voice --force    # make them all again
+```
+
+- `ELEVENLABS_API_KEY` is read from the environment, or from an `ELEVENLABS_API_KEY=` line in `.env.tts` at the repository root (git-ignored). The script never prints it, and exits with code 1 when it is missing.
+- `ELEVENLABS_VOICE` is a voice name or id (default: `Brian`). The script prints the voice id it used and how it found it.
+  - A voice id is used as given.
+  - A name is looked up among the account's voices. If nothing matches, the script falls back to the account's first premade voice.
+  - A key limited to text-to-speech can't list voices. The script then knows `Brian`, `George`, `Sarah`, `Rachel` and `Adam` itself; for any other voice, pass its id or grant the key "Voices: Read".
+- Clips are made one at a time; a 429 or 5xx answer is retried once. `manifest.json` records each clip's text hash, voice and size, which is how unchanged clips are skipped.
+
+Commit the regenerated `public/tour/voice/` files with the change to the lines.
 
 ## Deliberate simplifications
 

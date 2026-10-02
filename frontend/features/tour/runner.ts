@@ -4,6 +4,8 @@
  * Steps run one after another: a step's `enter()` sets the app up (and may choreograph it), then the
  * step holds for its `hold`. Every wait is pausable (a pause freezes the clock where it is) and abortable
  * (Next, Previous and Exit abort the step in flight, its timers with it).
+ *
+ * With a voice, each step's clip starts with the step, and the step also waits for the clip to end.
  */
 
 export interface Scheduler {
@@ -140,6 +142,23 @@ export function createPausableClock(scheduler: Scheduler): PausableClock {
   };
 }
 
+/** The tour's voice, as the runner uses it: one clip per step id (narrator.ts plays them). */
+export interface TourVoice {
+  /** Play a clip. Resolves true once it has been heard to its end, false if it wasn't (off, missing, cut short). */
+  play(id: string): Promise<boolean>;
+  pause(): void;
+  resume(): void;
+  /** Cut the clip in flight. */
+  stop(): void;
+  /** Fetch these clips ahead of their steps, so each starts without a gap. */
+  preload(ids: readonly string[]): void;
+}
+
+/** A step stays this long after its clip ends (ms), so the next line doesn't run into it. */
+export const AFTER_CLIP = 400;
+/** The clips of this many coming steps are fetched ahead. */
+const CLIPS_AHEAD = 2;
+
 /** What a step spotlights: one `data-tour` selector, or several shown as one. */
 export type TourTarget = string | readonly string[];
 
@@ -163,6 +182,16 @@ export interface StepContext<App> {
   gate(): Promise<void>;
   /** Replace this step's caption (null: back to its own). */
   say(caption: string | null): void;
+  /**
+   * Speak a clip (the step's own, unless `id` names another) once what the step has spoken so far has
+   * ended, if `when()` still holds by then; the step waits for it too. Without a voice, nothing happens.
+   */
+  narrate(id?: string, when?: () => boolean): void;
+  /**
+   * Cut what the step is speaking. A step whose clip describes what isn't on screen yet hushes it on
+   * entering, and speaks it with narrate() once it is.
+   */
+  hush(): void;
   /** Move the spotlight (null: none). */
   spotlight(target: TourTarget | null): void;
   /** Called when the tour pauses or resumes during this step. */
@@ -181,6 +210,8 @@ export interface TourStep<App> {
   /** Puts the app in the state this step shows. Idempotent, so Next and Previous can land on it from anywhere. */
   enter: (ctx: StepContext<App>, signal: AbortSignal) => Promise<void>;
   hold?: Hold;
+  /** Further clips the step may narrate(), fetched ahead with its own. */
+  clips?: readonly string[];
   /** What Previous does here: go back a step (default), restart this step, or restart the tour. */
   back?: "previous" | "restart" | "tour";
 }
@@ -223,6 +254,8 @@ export interface RunnerOptions<App> {
   /** Divides every wait (a test-only speed-up). */
   speed?: number;
   reducedMotion?: () => boolean;
+  /** Speaks each step's clip (none: a silent tour, timed by its holds alone). */
+  narrator?: TourVoice;
   onEnd?: (reason: EndReason) => void;
 }
 
@@ -234,12 +267,14 @@ export function createTourRunner<App>({
   scheduler = browserScheduler,
   speed = 1,
   reducedMotion = () => false,
+  narrator,
   onEnd,
 }: RunnerOptions<App>): TourRunner {
   const clock = createPausableClock(scheduler);
   const listeners = new Set<() => void>();
   let snapshot = IDLE_SNAPSHOT;
-  let current: { controller: AbortController; ctx: StepContext<App> } | null = null;
+  /** `spoken` settles when everything the step has said so far has been heard (or cut). */
+  let current: { controller: AbortController; ctx: StepContext<App>; spoken: Promise<void> } | null = null;
   let pauseHandlers: (() => void)[] = [];
   let resumeHandlers: (() => void)[] = [];
 
@@ -253,9 +288,19 @@ export function createTourRunner<App>({
     current = null;
     pauseHandlers = [];
     resumeHandlers = [];
+    narrator?.stop();
   }
 
-  function context(controller: AbortController): StepContext<App> {
+  /** Play a clip, then the pause after it; nothing to wait for when it wasn't heard. */
+  function speak(id: string, wait: (ms: number) => Promise<void>): Promise<void> {
+    if (!narrator) return Promise.resolve();
+    const spoken = narrator.play(id).then((heard) => (heard ? wait(AFTER_CLIP) : undefined));
+    // A step that is left mid-clip is over: nothing waits on this any more.
+    spoken.catch(() => undefined);
+    return spoken;
+  }
+
+  function context(controller: AbortController, stepId: string): StepContext<App> {
     const { signal } = controller;
     const live = () => current?.controller === controller;
     const wait = (ms: number) => clock.sleep(ms / speed, signal);
@@ -292,6 +337,15 @@ export function createTourRunner<App>({
       say(caption) {
         if (live() && snapshot.say !== caption) update({ say: caption });
       },
+      narrate(id = stepId, when = () => true) {
+        if (!current || !live()) return;
+        const spoken = current.spoken.then(() => (live() && when() ? speak(id, wait) : undefined));
+        spoken.catch(() => undefined);
+        current.spoken = spoken;
+      },
+      hush() {
+        if (live()) narrator?.stop();
+      },
       spotlight(target) {
         if (live()) update({ target });
       },
@@ -310,16 +364,22 @@ export function createTourRunner<App>({
   function enter(index: number) {
     leaveStep();
     clock.resume();
+    narrator?.resume();
     const step = steps[index];
     const controller = new AbortController();
-    const ctx = context(controller);
-    current = { controller, ctx };
+    const ctx = context(controller, step.id);
+    const ahead = steps.slice(index + 1, index + 1 + CLIPS_AHEAD).flatMap((next) => [next.id, ...(next.clips ?? [])]);
+    if (ahead.length > 0) narrator?.preload(ahead);
+    const entered = { controller, ctx, spoken: speak(step.id, ctx.wait) };
+    current = entered;
     update({ status: "running", index, say: null, target: step.target ?? null, entry: snapshot.entry + 1 });
 
     const hold = step.hold ?? 0;
     Promise.resolve()
       .then(() => step.enter(ctx, controller.signal))
       .then(() => (typeof hold === "number" ? ctx.wait(hold) : undefined))
+      // The step lasts as long as its hold, or its clip (and the pause after it) if that ends later.
+      .then(() => (narrator ? entered.spoken : undefined))
       .then(() => ctx.gate())
       .then(
         () => {
@@ -350,6 +410,7 @@ export function createTourRunner<App>({
   function pause(tellStep = true) {
     if (snapshot.status !== "running") return;
     clock.pause();
+    narrator?.pause();
     update({ status: "paused" });
     if (tellStep) pauseHandlers.forEach((handler) => handler());
   }
@@ -357,6 +418,7 @@ export function createTourRunner<App>({
   function resume() {
     if (snapshot.status !== "paused") return;
     clock.resume();
+    narrator?.resume();
     update({ status: "running" });
     resumeHandlers.forEach((handler) => handler());
   }

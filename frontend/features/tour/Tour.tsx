@@ -32,12 +32,15 @@ export function Tour({
       detail={tour.detail}
       paused={tour.paused}
       captions={tour.captions}
+      voice={tour.voice}
+      voiceBlocked={tour.voiceBlocked}
       target={tour.target}
       raised={raised}
       onPrevious={tour.previous}
       onToggle={tour.toggle}
       onNext={tour.next}
       onToggleCaptions={tour.toggleCaptions}
+      onToggleVoice={tour.toggleVoice}
       onExit={tour.exit}
     />
   );

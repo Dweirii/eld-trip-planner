@@ -6,6 +6,8 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/tiles.openfreemap.org/**", (route) => route.abort());
   await page.route("**/api/health/", (route) => route.fulfill({ json: { status: "ok", engine_version: "1.0.0" } }));
   await page.route("**/api/trips/", (route) => route.fulfill({ status: 201, json: trip }));
+  // Not a first visit: the tour invitation's bubble has been dismissed, so it never sits over the map.
+  await page.addInitScript(() => window.localStorage.setItem("milepost:tour-invite-dismissed", "1"));
 });
 
 test("an example trip produces the itinerary, rule checks and daily logs", async ({ page }) => {

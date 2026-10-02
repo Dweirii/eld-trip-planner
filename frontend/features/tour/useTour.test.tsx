@@ -1,6 +1,8 @@
 import { act, fireEvent, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TourController } from "./controller";
+import { SEEN_KEY, createInviteStore, invitation } from "./invite";
+import type { Narrator } from "./narrator";
 import type { Scheduler, TourStep } from "./runner";
 import { TOUR_UI_ATTRIBUTE, tourSpeed, useTour } from "./useTour";
 
@@ -39,9 +41,52 @@ function open(url: string) {
   window.history.replaceState(null, "", url);
 }
 
+/** A narrator with no sound: it notes the clips that would be heard, and each step keeps its own hold. */
+function fakeNarrator() {
+  const listeners = new Set<() => void>();
+  const tell = () => listeners.forEach((listener) => listener());
+  const narrator = {
+    enabled: true,
+    blocked: false,
+    heard: [] as string[],
+    async play(id: string) {
+      if (narrator.enabled && !narrator.blocked) narrator.heard.push(id);
+      return false;
+    },
+    pause: vi.fn(),
+    resume: vi.fn(),
+    stop: vi.fn(),
+    preload: vi.fn(),
+    setEnabled(enabled: boolean) {
+      narrator.enabled = enabled;
+    },
+    /** The browser's autoplay policy refuses to play. */
+    block() {
+      narrator.blocked = true;
+      tell();
+    },
+    unblock: vi.fn(() => {
+      narrator.blocked = false;
+      tell();
+    }),
+    subscribe(listener: () => void) {
+      listeners.add(listener);
+      return () => void listeners.delete(listener);
+    },
+  };
+  return narrator satisfies Narrator;
+}
+
+let narrator = fakeNarrator();
+let invite = createInviteStore();
+
 function setup(url = "/?tour=1") {
   open(url);
-  return renderHook(() => useTour(controller, { steps, scheduler }));
+  narrator = fakeNarrator();
+  invite = createInviteStore();
+  const voice = narrator;
+  const store = invite;
+  return renderHook(() => useTour(controller, { steps, scheduler, narrator: voice, invite: store }));
 }
 
 const key = (target: Element, name: string) => act(() => void fireEvent.keyDown(target, { key: name }));
@@ -75,6 +120,20 @@ describe("useTour", () => {
     const { result } = setup("/trips/abc123?tour=1");
     expect(navigation.replace).toHaveBeenCalledWith("/?tour=1");
     expect(result.current.active).toBe(false);
+  });
+
+  it("tells the invitation when a tour starts, so it stops inviting, now and on later visits", () => {
+    const idle = setup("/");
+    expect(invitation(invite.getSnapshot(), "/")).toEqual({ live: true, bubble: true });
+    expect(window.localStorage.getItem(SEEN_KEY)).toBeNull();
+    idle.unmount();
+
+    setup("/?tour=1");
+    expect(invitation(invite.getSnapshot(), "/").live).toBe(false);
+    expect(window.localStorage.getItem(SEEN_KEY)).not.toBeNull();
+    key(document.body, "Escape");
+    expect(invitation(invite.getSnapshot(), "/").live).toBe(false);
+    expect(invitation(createInviteStore().getSnapshot(), "/").live).toBe(false);
   });
 
   it("moves on by itself, step by step", async () => {
@@ -116,13 +175,83 @@ describe("useTour", () => {
     expect(again.result.current.captions).toBe(true);
   });
 
+  it("speaks each step, with the voice on unless it was turned off", () => {
+    const { result } = setup();
+    expect(result.current).toMatchObject({ voice: true, voiceBlocked: false });
+    expect(narrator.heard).toEqual(["one"]);
+    key(document.body, "ArrowRight");
+    expect(narrator.heard).toEqual(["one", "two"]);
+  });
+
+  it("toggles the voice with V and remembers the choice", () => {
+    const { result, unmount } = setup();
+    key(document.body, "v");
+    expect(result.current.voice).toBe(false);
+    expect(narrator.enabled).toBe(false);
+    key(document.body, "ArrowRight");
+    expect(narrator.heard).toEqual(["one"]);
+    unmount();
+
+    // Off from the first step of the next tour.
+    const again = setup();
+    expect(again.result.current.voice).toBe(false);
+    expect(narrator.heard).toEqual([]);
+    key(document.body, "V");
+    expect(again.result.current.voice).toBe(true);
+    key(document.body, "ArrowRight");
+    expect(narrator.heard).toEqual(["two"]);
+  });
+
+  it("forces the voice off under the test-only speed-up, for the whole run, and leaves the choice alone", () => {
+    const { result, rerender } = setup("/?tour=1&tourSpeed=4");
+    expect(result.current.voice).toBe(false);
+    // The workspace strips the params once the tour has started.
+    navigation.search = "";
+    rerender();
+    key(document.body, "v");
+    key(document.body, "ArrowRight");
+    expect(result.current).toMatchObject({ caption: "Two", voice: false });
+    expect(narrator.heard).toEqual([]);
+    expect(window.localStorage.getItem("milepost:tour-voice")).toBeNull();
+  });
+
+  it("carries on in silence when the browser blocks autoplay, until the voice button is clicked", () => {
+    const { result } = setup();
+    act(() => narrator.block());
+    expect(result.current).toMatchObject({ voice: true, voiceBlocked: true, caption: "One", paused: false });
+    key(document.body, "ArrowRight");
+    expect(narrator.heard).toEqual(["one"]);
+
+    // The first click unblocks it and leaves the voice on: audio from the next step.
+    act(() => result.current.toggleVoice());
+    expect(narrator.unblock).toHaveBeenCalledOnce();
+    expect(result.current).toMatchObject({ voice: true, voiceBlocked: false });
+    key(document.body, "ArrowRight");
+    expect(narrator.heard).toEqual(["one", "three"]);
+
+    act(() => result.current.toggleVoice());
+    expect(result.current.voice).toBe(false);
+  });
+
+  it("stops the voice when the tour ends or the page goes away", () => {
+    setup();
+    narrator.stop.mockClear();
+    key(document.body, "Escape");
+    expect(narrator.stop).toHaveBeenCalled();
+
+    const { unmount } = setup();
+    narrator.stop.mockClear();
+    unmount();
+    expect(narrator.stop).toHaveBeenCalled();
+  });
+
   it("treats typing in a field as the user taking over: it pauses, and leaves the keys to the field", () => {
     const { result } = setup();
     const input = document.createElement("input");
     document.body.append(input);
     input.focus();
-    for (const name of [" ", "ArrowRight", "c", "Escape"]) key(input, name);
-    expect(result.current).toMatchObject({ active: true, paused: true, caption: "One", captions: true });
+    for (const name of [" ", "ArrowRight", "c", "v", "Escape"]) key(input, name);
+    expect(result.current).toMatchObject({ active: true, paused: true, caption: "One", captions: true, voice: true });
   });
 
   it("leaves arrow keys to tabs and sliders, pausing for the user instead of changing step", () => {
@@ -191,8 +320,9 @@ describe("useTour", () => {
     const { result } = setup();
     for (const name of ["Shift", "Control", "Alt", "Meta"]) key(document.body, name);
     act(() => void fireEvent.keyDown(document.body, { key: "c", metaKey: true }));
+    act(() => void fireEvent.keyDown(document.body, { key: "v", ctrlKey: true }));
     act(() => void fireEvent.keyDown(document.body, { key: "Tab", ctrlKey: true }));
-    expect(result.current).toMatchObject({ paused: false, caption: "One", captions: true });
+    expect(result.current).toMatchObject({ paused: false, caption: "One", captions: true, voice: true });
   });
 
   it("leaves every key to an open dialog", () => {
@@ -202,9 +332,9 @@ describe("useTour", () => {
     const button = document.createElement("button");
     dialog.append(button);
     document.body.append(dialog);
-    for (const name of [" ", "ArrowRight", "c", "Escape", "Enter"]) key(document.body, name);
+    for (const name of [" ", "ArrowRight", "c", "v", "Escape", "Enter"]) key(document.body, name);
     key(button, "Enter");
-    expect(result.current).toMatchObject({ active: true, paused: false, caption: "One", captions: true });
+    expect(result.current).toMatchObject({ active: true, paused: false, caption: "One", captions: true, voice: true });
   });
 
   it("carries on when Next or Previous is pressed while paused", () => {

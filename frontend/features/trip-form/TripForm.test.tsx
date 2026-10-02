@@ -69,6 +69,14 @@ describe("TripForm", () => {
     expect(props.onExample).toHaveBeenCalledWith(EXAMPLE_TRIPS[1].values);
   });
 
+  it("offers the guided tour under the examples, as a quiet link to /?tour=1", () => {
+    setup();
+    const tour = screen.getByRole("link", { name: "Not sure where to start? Take the tour" });
+    expect(tour).toHaveAttribute("href", "/?tour=1");
+    const lastExample = screen.getAllByRole("button", { name: /—/ }).at(-1) as HTMLElement;
+    expect(lastExample.compareDocumentPosition(tour) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("opens the details section when the start time has an error", () => {
     setup({ errors: { startTime: "Pick a date and time." } });
     expect(screen.getByText("Pick a date and time.").closest("details")).toHaveAttribute("open");

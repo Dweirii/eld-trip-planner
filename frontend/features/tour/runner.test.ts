@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  AFTER_CLIP,
   type Scheduler,
   type StepContext,
   type TourStep,
+  type TourVoice,
   createPausableClock,
   createTourRunner,
 } from "./runner";
@@ -30,7 +32,10 @@ function step(id: string, options: Partial<TourStep<App>> = {}): TourStep<App> {
   };
 }
 
-function setup(steps: TourStep<App>[], options: { speed?: number; reducedMotion?: boolean } = {}) {
+function setup(
+  steps: TourStep<App>[],
+  options: { speed?: number; reducedMotion?: boolean; narrator?: TourVoice } = {},
+) {
   const app: App = { log: [] };
   const onEnd = vi.fn();
   const runner = createTourRunner({
@@ -39,6 +44,7 @@ function setup(steps: TourStep<App>[], options: { speed?: number; reducedMotion?
     scheduler,
     speed: options.speed,
     reducedMotion: () => options.reducedMotion ?? false,
+    narrator: options.narrator,
     onEnd,
   });
   const index = () => runner.getSnapshot().index;
@@ -421,6 +427,279 @@ describe("createTourRunner", () => {
     expect(index()).toBe(0);
     await advance(1);
     expect(index()).toBe(1);
+  });
+});
+
+/** A voice whose clips last what the test says, in fake-timer time (no entry: no clip to hear). */
+function fakeVoice(clips: Record<string, number>) {
+  const clock = createPausableClock(scheduler);
+  const log: string[] = [];
+  let playing: AbortController | null = null;
+  const voice: TourVoice = {
+    play(id) {
+      voice.stop();
+      if (!(id in clips)) return Promise.resolve(false);
+      log.push(`play ${id}`);
+      const clip = new AbortController();
+      playing = clip;
+      return clock.sleep(clips[id], clip.signal).then(
+        () => {
+          playing = null;
+          log.push(`end ${id}`);
+          return true;
+        },
+        () => false,
+      );
+    },
+    pause() {
+      if (playing) log.push("pause");
+      clock.pause();
+    },
+    resume() {
+      if (playing) log.push("resume");
+      clock.resume();
+    },
+    stop() {
+      if (playing) log.push("stop");
+      playing?.abort();
+      playing = null;
+    },
+    preload: (ids) => void log.push(`preload ${ids.join(" ")}`),
+  };
+  const heard = () => log.filter((entry) => !entry.startsWith("preload"));
+  return { voice, log, heard };
+}
+
+describe("createTourRunner with a voice", () => {
+  it("starts a step's clip with the step, and waits for it and a breath after when it outlasts the hold", async () => {
+    expect(AFTER_CLIP).toBe(400);
+    const { voice, heard } = fakeVoice({ a: 3000, b: 500 });
+    const { runner, index } = setup([step("a", { hold: 1000 }), step("b", { hold: 1000 })], { narrator: voice });
+    runner.start();
+    expect(heard()).toEqual(["play a"]);
+    await advance(3000 + AFTER_CLIP - 1);
+    expect(index()).toBe(0);
+    await advance(1);
+    expect(index()).toBe(1);
+    expect(heard()).toEqual(["play a", "end a", "play b"]);
+  });
+
+  it("keeps a step's own hold when its clip is shorter", async () => {
+    const { voice } = fakeVoice({ a: 300 });
+    const { runner, index } = setup(
+      [step("a", { hold: 1000, enter: (ctx) => ctx.wait(500) }), step("b", { hold: 1000 })],
+      { narrator: voice },
+    );
+    runner.start();
+    await advance(1499);
+    expect(index()).toBe(0);
+    await advance(1);
+    expect(index()).toBe(1);
+  });
+
+  it("keeps today's timing exactly when nothing is heard (voice off, a missing clip)", async () => {
+    for (const narrator of [undefined, fakeVoice({}).voice]) {
+      const { runner, index, status } = setup(
+        [step("a", { hold: 100 }), step("b", { hold: 50 }), step("c", { hold: 20 })],
+        { narrator },
+      );
+      runner.start();
+      await advance(99);
+      expect(index()).toBe(0);
+      await advance(1);
+      expect(index()).toBe(1);
+      await advance(49);
+      expect(index()).toBe(1);
+      await advance(1);
+      expect(index()).toBe(2);
+      await advance(19);
+      expect(status()).toBe("running");
+      await advance(1);
+      expect(status()).toBe("ended");
+    }
+  });
+
+  it("waits for both the work and the clip of a step that runs until it is done", async () => {
+    let finish = () => undefined as void;
+    const { voice } = fakeVoice({ plan: 2000 });
+    const { runner, index } = setup(
+      [
+        step("plan", { hold: "until-done", enter: () => new Promise<void>((resolve) => (finish = resolve)) }),
+        step("results", { hold: 1000 }),
+      ],
+      { narrator: voice },
+    );
+    runner.start();
+    await advance(500);
+    finish();
+    await advance(1500 + AFTER_CLIP - 1);
+    expect(index()).toBe(0);
+    await advance(1);
+    expect(index()).toBe(1);
+
+    runner.previous();
+    await advance(60_000);
+    expect(index()).toBe(0);
+    finish();
+    await advance(0);
+    expect(index()).toBe(1);
+  });
+
+  it("pauses the clip with the tour, and resumes it", async () => {
+    const { voice, heard } = fakeVoice({ a: 2000 });
+    const { runner, index } = setup([step("a", { hold: 500 }), step("b", { hold: 1000 })], { narrator: voice });
+    runner.start();
+    await advance(1000);
+    runner.pause();
+    expect(heard()).toEqual(["play a", "pause"]);
+    await advance(10_000);
+    expect(index()).toBe(0);
+    runner.resume();
+    expect(heard()).toEqual(["play a", "pause", "resume"]);
+    await advance(1000 + AFTER_CLIP - 1);
+    expect(index()).toBe(0);
+    await advance(1);
+    expect(index()).toBe(1);
+  });
+
+  it("pauses the clip when the user takes over, and the breath after a clip too", async () => {
+    const { voice, heard } = fakeVoice({ a: 1000 });
+    const { runner, index } = setup([step("a", { hold: 500 }), step("b", { hold: 1000 })], { narrator: voice });
+    runner.start();
+    await advance(400);
+    runner.takeOver();
+    expect(heard()).toEqual(["play a", "pause"]);
+    runner.resume();
+    await advance(600 + 100);
+    runner.pause();
+    await advance(10_000);
+    expect(index()).toBe(0);
+    runner.resume();
+    await advance(AFTER_CLIP - 100);
+    expect(index()).toBe(1);
+  });
+
+  it("stops the clip at once on Next, Previous and Exit", async () => {
+    const { voice, heard } = fakeVoice({ a: 5000, b: 5000 });
+    const { runner, index, status } = setup([step("a", { hold: 1000 }), step("b", { hold: 1000 })], {
+      narrator: voice,
+    });
+    runner.start();
+    await advance(100);
+    runner.next();
+    expect(heard()).toEqual(["play a", "stop", "play b"]);
+    expect(index()).toBe(1);
+    await advance(100);
+    runner.previous();
+    expect(heard().slice(3)).toEqual(["stop", "play a"]);
+    await advance(100);
+    runner.exit();
+    expect(heard().slice(5)).toEqual(["stop"]);
+    expect(status()).toBe("ended");
+    await advance(60_000);
+    expect(heard()).toHaveLength(6);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("starts the next step's clip unpaused when Next is pressed while paused", async () => {
+    const { voice, heard } = fakeVoice({ a: 5000, b: 1000 });
+    const { runner, status } = setup([step("a", { hold: 1000 }), step("b", { hold: 500 })], { narrator: voice });
+    runner.start();
+    await advance(100);
+    runner.pause();
+    runner.next();
+    expect(heard()).toEqual(["play a", "pause", "stop", "play b"]);
+    await advance(1000 + AFTER_CLIP);
+    expect(status()).toBe("ended");
+  });
+
+  it("lets a step speak a second clip after its own, if it still applies by then, and waits for that too", async () => {
+    let pending = true;
+    const { voice, heard } = fakeVoice({ plan: 1000, planning: 3000, quick: 1000 });
+    const second = (ctx: Ctx) => ctx.narrate("planning", () => pending);
+    const { runner, index } = setup(
+      [
+        step("plan", { hold: "until-done", enter: async (ctx) => second(ctx) }),
+        step("quick", { hold: "until-done", enter: async (ctx) => second(ctx) }),
+        step("after", { hold: 1000 }),
+      ],
+      { narrator: voice },
+    );
+    runner.start();
+    await advance(1000 + AFTER_CLIP - 1);
+    expect(heard()).toEqual(["play plan", "end plan"]);
+    await advance(1);
+    expect(heard()).toEqual(["play plan", "end plan", "play planning"]);
+    await advance(3000 + AFTER_CLIP - 1);
+    expect(index()).toBe(0);
+    await advance(1);
+    expect(index()).toBe(1);
+
+    // The answer comes while the step's own clip is still playing: the second clip is skipped.
+    pending = false;
+    await advance(1000 + AFTER_CLIP);
+    expect(index()).toBe(2);
+    expect(heard().slice(4)).toEqual(["play quick", "end quick"]);
+  });
+
+  it("lets a step hold its own clip back and speak it later, and waits for it then", async () => {
+    const { voice, heard } = fakeVoice({ results: 2000 });
+    const { runner, index } = setup(
+      [
+        step("results", {
+          hold: 500,
+          enter: async (ctx) => {
+            // What the clip describes isn't on screen yet.
+            ctx.hush();
+            await ctx.wait(1000);
+            ctx.narrate();
+          },
+        }),
+        step("after", { hold: 1000 }),
+      ],
+      { narrator: voice },
+    );
+    runner.start();
+    await advance(999);
+    expect(heard()).toEqual(["play results", "stop"]);
+    await advance(1);
+    expect(heard()).toEqual(["play results", "stop", "play results"]);
+    await advance(2000 + AFTER_CLIP - 1);
+    expect(index()).toBe(0);
+    await advance(1);
+    expect(index()).toBe(1);
+    expect(heard().slice(3)).toEqual(["end results"]);
+  });
+
+  it("does not speak a second clip for a step that has been left", async () => {
+    let late: Ctx | undefined;
+    const { voice, heard } = fakeVoice({ a: 1000, b: 1000, late: 1000 });
+    const { runner } = setup(
+      [step("a", { hold: 1000, enter: async (ctx) => void (late = ctx) }), step("b", { hold: 5000 })],
+      { narrator: voice },
+    );
+    runner.start();
+    await advance(0);
+    runner.next();
+    late?.narrate("late");
+    late?.hush();
+    await advance(5000);
+    expect(heard()).toEqual(["play a", "stop", "play b", "end b"]);
+  });
+
+  it("fetches the clips of the next two steps ahead, with any second clips they speak", async () => {
+    const { voice, log } = fakeVoice({});
+    const { runner } = setup(
+      [step("a", { hold: 100 }), step("b", { hold: 100, clips: ["b-more"] }), step("c", { hold: 100 }), step("d")],
+      { narrator: voice },
+    );
+    runner.start();
+    await advance(250);
+    expect(log.filter((entry) => entry.startsWith("preload"))).toEqual([
+      "preload b b-more c",
+      "preload c d",
+      "preload d",
+    ]);
   });
 });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { type ReactNode, useCallback, useEffect, useEffectEvent, useRef } from "react";
+import { type ReactNode, type Ref, useCallback, useEffect, useEffectEvent, useId, useRef } from "react";
 import { type Box, easeInOut, targetBox, targetElements, visibleBox } from "./dom";
 import type { TourTarget } from "./runner";
 import { TOUR_UI_ATTRIBUTE } from "./useTour";
@@ -16,6 +16,10 @@ export interface TourOverlayProps {
   paused: boolean;
   /** Off: the card shrinks to a slim control pill, for a clean recording. */
   captions: boolean;
+  /** The narration is on. */
+  voice: boolean;
+  /** The browser won't play the voice before a click (its autoplay policy): the voice button says so. */
+  voiceBlocked?: boolean;
   target: TourTarget | null;
   /** Desktop: the trip replay's bar is open; the card moves to the top of the map, out of its way. */
   raised?: boolean;
@@ -23,10 +27,12 @@ export interface TourOverlayProps {
   onToggle: () => void;
   onNext: () => void;
   onToggleCaptions: () => void;
+  onToggleVoice: () => void;
   onExit: () => void;
 }
 
 const PAUSED = "Paused (press Space to continue)";
+const VOICE_HINT = "Click 🔊 to hear the tour";
 
 /** Desktop: the map keeps this much more room at the bottom while the tour runs, for the caption card. */
 export const CAPTION_ROOM = 170;
@@ -45,6 +51,13 @@ function coveredShare(target: Box, card: Box): number {
 export function TourOverlay(props: TourOverlayProps) {
   const { index, total, entry, caption, detail, paused, captions, target, raised = false } = props;
   const cardRef = useRef<HTMLElement>(null);
+
+  // The tour starts with the focus on Pause, so Space and Enter pause and resume it straight away. The
+  // link that started it would otherwise keep the focus, and Space on a link is the link's, not the tour's.
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    toggleRef.current?.focus({ preventScroll: true });
+  }, []);
 
   // When the spotlight's target sits under the card (a log sheet's remarks; on a phone, a map pin), the
   // card moves out of the way (desktop: to the top of the map; small screens: to the bottom) until the
@@ -109,7 +122,7 @@ export function TourOverlay(props: TourOverlayProps) {
             <p aria-live="polite" className="text-[12px] font-bold text-coral-ink">
               {paused && <span className="mt-1.5 block">{PAUSED}</span>}
             </p>
-            <Controls {...props} className="mt-2.5" />
+            <Controls {...props} toggleRef={toggleRef} className="mt-2.5" />
           </>
         ) : (
           <>
@@ -119,7 +132,7 @@ export function TourOverlay(props: TourOverlayProps) {
                 {paused && <span className="ml-1.5">{PAUSED}</span>}
               </span>
               <span aria-hidden="true" className="mx-1.5 h-4 w-px bg-line" />
-              <Controls {...props} />
+              <Controls {...props} toggleRef={toggleRef} />
             </div>
             {/* Screen readers still hear each step with the captions hidden. */}
             <p aria-live="polite" aria-atomic="true" className="sr-only">
@@ -158,25 +171,36 @@ function Mileposts({ index, total }: { index: number; total: number }) {
 function Controls({
   paused,
   captions,
+  voice,
+  voiceBlocked = false,
   onPrevious,
   onToggle,
   onNext,
   onToggleCaptions,
+  onToggleVoice,
   onExit,
+  toggleRef,
   className,
-}: TourOverlayProps & { className?: string }) {
+}: TourOverlayProps & { toggleRef: Ref<HTMLButtonElement>; className?: string }) {
   return (
     <div className={clsx("flex items-center gap-0.5", className)}>
       <IconButton label="Previous step" shortcut="←" onClick={onPrevious}>
         <ArrowIcon direction="left" />
       </IconButton>
-      <IconButton label={paused ? "Resume tour" : "Pause tour"} shortcut="Space" onClick={onToggle} primary>
+      <IconButton
+        ref={toggleRef}
+        label={paused ? "Resume tour" : "Pause tour"}
+        shortcut="Space"
+        onClick={onToggle}
+        primary
+      >
         {paused ? <PlayIcon /> : <PauseIcon />}
       </IconButton>
       <IconButton label="Next step" shortcut="→" onClick={onNext}>
         <ArrowIcon direction="right" />
       </IconButton>
       <span className={clsx(captions ? "flex-1" : "w-1")} />
+      <VoiceButton on={voice} blocked={voiceBlocked} onClick={onToggleVoice} />
       <button
         type="button"
         aria-label="Captions"
@@ -204,13 +228,50 @@ function Controls({
   );
 }
 
+/**
+ * The voice's mute control: always within reach, in the card and in the pill. When the browser has
+ * blocked autoplay, the voice is on but unheard, and a hint under the button asks for the click.
+ */
+function VoiceButton({ on, blocked, onClick }: { on: boolean; blocked: boolean; onClick: () => void }) {
+  const hintId = useId();
+  const label = on && !blocked ? "Turn voice off" : "Turn voice on";
+  return (
+    <span className="relative">
+      <button
+        type="button"
+        aria-label={label}
+        aria-describedby={blocked ? hintId : undefined}
+        title={`${label} (V)`}
+        onClick={onClick}
+        className={clsx(
+          "grid size-8 place-items-center rounded-full transition hover:bg-surface active:scale-95",
+          on ? "text-brand" : "text-muted hover:text-brand",
+        )}
+      >
+        <SpeakerIcon muted={!on} />
+      </button>
+      {blocked && (
+        <span
+          id={hintId}
+          role="status"
+          className="animate-caption-in pointer-events-none absolute right-0 top-full mt-2 whitespace-nowrap rounded-lg bg-brand px-2.5 py-1 text-[11.5px] font-semibold text-white shadow-[0_6px_18px_rgb(4_59_75/0.3)]"
+        >
+          {VOICE_HINT}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function IconButton({
+  ref,
   label,
   shortcut,
   onClick,
   primary = false,
   children,
 }: {
+  ref?: Ref<HTMLButtonElement>;
   label: string;
   shortcut: string;
   onClick: () => void;
@@ -219,6 +280,7 @@ function IconButton({
 }) {
   return (
     <button
+      ref={ref}
       type="button"
       aria-label={label}
       title={`${label} (${shortcut})`}
@@ -342,6 +404,27 @@ function PauseIcon() {
     <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
       <rect x="3.5" y="2.5" width="3.2" height="11" rx="1.1" fill="currentColor" />
       <rect x="9.3" y="2.5" width="3.2" height="11" rx="1.1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function SpeakerIcon({ muted }: { muted: boolean }) {
+  return (
+    <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false">
+      <path
+        d="M2.2 6.2h2.3L8 3.3v9.4L4.5 9.8H2.2z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <path
+        d={muted ? "M10.7 6.2l3.5 3.6M14.2 6.2l-3.5 3.6" : "M10.4 5.9a3 3 0 0 1 0 4.2M12.3 4a5.7 5.7 0 0 1 0 8"}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

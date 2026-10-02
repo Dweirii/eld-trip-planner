@@ -51,6 +51,11 @@ body {
   header :focus-visible {
     outline-color: var(--color-mint);
   }
+
+  /* The tour invitation's bubble hangs from the header, but it is a white card. */
+  header .tour-invite__card :focus-visible {
+    outline-color: var(--color-teal);
+  }
 }
 
 /* Map stop markers: MapLibre positions the element (absolute); the SVG icon comes from lib/stops.ts. */
@@ -215,6 +220,184 @@ body {
   animation: caption-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+/*
+ * The invitation to take the guided tour (TourInvite). While it is live, the top bar's tour pill sends
+ * out two soft coral rings, a highlight sweeps across it, and its play icon nudges forward. Its bubble
+ * drops from the pill with a small bounce, and inside it the truck drives its route. Everything moves by
+ * transform and opacity only, and nothing here takes a pointer event or changes the layout.
+ */
+.tour-invite {
+  /* The rings grow about 11px on every side of the pill: a round one on phones, a wide one from sm up. */
+  --radar-x: 1.85;
+  --radar-y: 1.85;
+}
+@media (width >= 40rem) {
+  .tour-invite {
+    --radar-x: 1.18;
+  }
+}
+.tour-invite__ring {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 9999px;
+  background: rgb(248 73 96 / 0.34);
+  box-shadow: 0 0 0 1.5px rgb(248 73 96 / 0.7);
+  opacity: 0;
+  pointer-events: none;
+  animation: tour-radar 2.6s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+}
+.tour-invite__ring + .tour-invite__ring {
+  animation-delay: 0.4s;
+}
+@keyframes tour-radar {
+  0% {
+    transform: none;
+    opacity: 0.9;
+  }
+  62%,
+  100% {
+    transform: scale(var(--radar-x), var(--radar-y));
+    opacity: 0;
+  }
+}
+.tour-invite__shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 32%, rgb(255 255 255 / 0.42) 50%, transparent 68%);
+  transform: translateX(-110%);
+  pointer-events: none;
+  animation: tour-shimmer 4s cubic-bezier(0.4, 0, 0.3, 1) infinite;
+}
+@keyframes tour-shimmer {
+  0%,
+  8% {
+    transform: translateX(-110%);
+  }
+  36%,
+  100% {
+    transform: translateX(110%);
+  }
+}
+.tour-invite.is-live .tour-invite__play {
+  animation: tour-nudge 2.6s cubic-bezier(0.3, 0.7, 0.4, 1) infinite;
+}
+@keyframes tour-nudge {
+  0%,
+  26%,
+  100% {
+    transform: none;
+  }
+  10% {
+    transform: translateX(2px);
+  }
+}
+
+.tour-invite__card,
+.tour-invite__arrow {
+  transform-origin: 50% 0;
+  animation: invite-in 620ms cubic-bezier(0.25, 0.8, 0.3, 1) both;
+}
+.tour-invite__card[data-closing],
+.tour-invite__arrow[data-closing] {
+  animation: invite-out 300ms ease-in both;
+}
+@keyframes invite-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.88);
+  }
+  52% {
+    opacity: 1;
+    transform: translateY(4px) scale(1.02);
+  }
+  76% {
+    transform: translateY(-1.5px) scale(0.995);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes invite-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+}
+
+/* The bubble's sketch: a dotted road, the part travelled, the truck (carried by a box as wide as the road). */
+.tour-invite__road {
+  background-image: radial-gradient(circle, rgb(0 128 128 / 0.5) 1.3px, transparent 1.6px);
+  background-size: 8px 3px;
+}
+.tour-invite__travelled {
+  transform-origin: 0 50%;
+  animation: invite-travelled 5.6s infinite;
+}
+.tour-invite__truck {
+  pointer-events: none;
+  animation: invite-drive 5.6s infinite;
+}
+.tour-invite__pin {
+  transform-origin: 50% 100%;
+  animation: invite-arrive 5.6s infinite;
+}
+@keyframes invite-drive {
+  0% {
+    transform: none;
+    opacity: 0;
+  }
+  7% {
+    transform: none;
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.25, 1);
+  }
+  66%,
+  90% {
+    transform: translateX(100%);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+@keyframes invite-travelled {
+  0% {
+    transform: scaleX(0);
+    opacity: 1;
+  }
+  7% {
+    transform: scaleX(0);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.25, 1);
+  }
+  66%,
+  90% {
+    transform: none;
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+    opacity: 0;
+  }
+}
+@keyframes invite-arrive {
+  0%,
+  64%,
+  86%,
+  100% {
+    transform: none;
+  }
+  71% {
+    transform: translateY(-3px) scale(1.2);
+  }
+  78% {
+    transform: scale(0.94);
+  }
+}
+
 /* The paper log sheet: faint ruled lines like a real form. */
 .log-sheet {
   background-image: repeating-linear-gradient(
@@ -257,6 +440,27 @@ body {
   .animate-bar-in,
   .animate-caption-in {
     animation: none;
+  }
+  /* The tour invitation: a static pill, a bubble that simply appears, a truck parked part of the way. */
+  .tour-invite__ring,
+  .tour-invite__shimmer {
+    display: none;
+  }
+  .tour-invite.is-live .tour-invite__play,
+  .tour-invite__card,
+  .tour-invite__arrow,
+  .tour-invite__card[data-closing],
+  .tour-invite__arrow[data-closing],
+  .tour-invite__pin {
+    animation: none;
+  }
+  .tour-invite__truck {
+    animation: none;
+    transform: translateX(58%);
+  }
+  .tour-invite__travelled {
+    animation: none;
+    transform: scaleX(0.58);
   }
 }
 

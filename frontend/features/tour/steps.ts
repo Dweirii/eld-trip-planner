@@ -1,4 +1,7 @@
-/** The guided tour, step by step: its captions (binding copy), what each step shows, and its pace. */
+/**
+ * The guided tour, step by step: its captions (binding copy), what each step shows, and its pace. What is
+ * spoken at each step is in voice.ts, by step id.
+ */
 import { EXAMPLE_TRIPS } from "@/features/trip-form/examples";
 import { EMPTY_FORM, type LocationValue, type TripFormValues } from "@/features/trip-form/model";
 import type { ResultsTab } from "@/features/workspace/ResultsPanel";
@@ -16,6 +19,7 @@ import {
 } from "./dom";
 import type { StepContext, TourStep } from "./runner";
 import { typeText } from "./typing";
+import { PLANNING_VOICE } from "./voice";
 
 export type TourContext = StepContext<TourController>;
 
@@ -122,19 +126,26 @@ async function typeInto(ctx: TourContext, key: LocationKey, place: LocationValue
   await ctx.wait(TIMING.afterField);
 }
 
-/** Plan what the form holds, as its Plan trip button does; on an API error, say so and retry once, then end the tour. */
-async function planTrip(ctx: TourContext) {
+/**
+ * Plan what the form holds, as its Plan trip button does; on an API error, say so and retry once, then end
+ * the tour. `voiced` (the plan step): the planning caption is spoken too, but only if the plan is still on
+ * its way once the step's own line has been said.
+ */
+async function planTrip(ctx: TourContext, voiced = false) {
   const { app } = ctx;
   for (let attempt = 1; attempt <= 2; attempt++) {
     const since = app.version;
+    let answered = false;
     app.plan(app.state.values);
     ctx.say(PLANNING_CAPTION);
     ctx.spotlight(null);
+    if (voiced && attempt === 1) ctx.narrate(PLANNING_VOICE, () => !answered);
     const state = await app.waitFor(
       (current) => !current.pending && (isPlanned(current) || current.notice !== null || current.invalid),
       ctx.signal,
       since,
     );
+    answered = true;
     await ctx.gate();
     if (isPlanned(state)) {
       ctx.say(null);
@@ -149,10 +160,9 @@ async function planTrip(ctx: TourContext) {
   ctx.exit();
 }
 
-/** The tour's trip on screen: planned already, still planning (wait for it), or planned now. */
-async function ensurePlanned(ctx: TourContext) {
+/** The plan under way (Next was pressed before it came in), or a new one for the tour's trip. */
+async function waitForPlan(ctx: TourContext) {
   const { app } = ctx;
-  if (isPlanned(app.state)) return;
   if (app.state.pending) {
     ctx.say(PLANNING_CAPTION);
     ctx.spotlight(null);
@@ -163,6 +173,18 @@ async function ensurePlanned(ctx: TourContext) {
   }
   app.setValues({ ...TOUR_TRIP });
   await planTrip(ctx);
+}
+
+/**
+ * The tour's trip on screen: planned already, still planning (wait for it), or planned now. While it
+ * waits, the caption says so, and the step's own line (about results that aren't in yet) is held back
+ * until they are.
+ */
+async function ensurePlanned(ctx: TourContext) {
+  if (isPlanned(ctx.app.state)) return;
+  ctx.hush();
+  await waitForPlan(ctx);
+  ctx.narrate();
 }
 
 /** The results as a step starts them: this tab, nothing selected, no replay, the map at the top. */
@@ -265,6 +287,7 @@ export const TOUR_STEPS: readonly TourStep<TourController>[] = [
     caption: () => "Plan the trip.",
     target: tourTarget("plan"),
     hold: "until-done",
+    clips: [PLANNING_VOICE],
     back: "tour",
     enter: async (ctx) => {
       await atForm(ctx);
@@ -274,7 +297,7 @@ export const TOUR_STEPS: readonly TourStep<TourController>[] = [
       await ctx.wait(TIMING.beforePress);
       press(button, ctx.reducedMotion);
       await ctx.wait(TIMING.press);
-      await planTrip(ctx);
+      await planTrip(ctx, true);
     },
   },
   {
