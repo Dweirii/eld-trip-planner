@@ -4,7 +4,9 @@
 
 **Plan a truck trip under FMCSA Hours-of-Service rules. You get the route, turn-by-turn directions, every required stop, and filled-in Driver's Daily Log sheets.**
 
-**Live app:** https://milepost-eld.vercel.app · **API docs:** https://milepost-api.vercel.app/api/docs/
+**Live app:** https://milepost-eld.vercel.app · **Video walkthrough:** https://youtu.be/rJqVPO8-cGk · **API docs:** https://milepost-api.vercel.app/api/docs/
+
+New here? Open the live app and click **Take the tour**: a narrated, two-minute walkthrough that plans a real trip and shows every feature.
 
 ![Milepost workspace: a Chicago → St. Louis → Dallas trip with its route, stops and itinerary](docs/screenshots/workspace.png)
 
@@ -42,6 +44,8 @@ Try the example chips:
 - *Restart needed*, which forces a 34-hour restart.
 
 You can select any stop on the map, in the itinerary, or on a log sheet's remark bracket, and it is highlighted in all three places. Every trip gets a shareable link (`/trips/<id>`).
+
+**Play trip** replays the plan: a truck drives the route along a timeline you can scrub, while the itinerary and the log sheet's "now" line move with it.
 
 ![A filled-in daily log: duty-status grid, totals, remarks and recap](docs/screenshots/log-sheet.png)
 
